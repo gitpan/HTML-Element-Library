@@ -20,7 +20,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 our @EXPORT_OK   = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT      = qw();
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # Preloaded methods go here.
 
@@ -83,6 +83,62 @@ sub HTML::Element::content_handler {
   $tree->set_child_content(id => $id_name, $content);
 
 }
+
+
+sub make_counter {
+  my $i = 1;
+  sub {
+    shift() . ':' . $i++
+  }
+}
+
+
+sub HTML::Element::iter {
+  my ($tree, $p, @data) = @_;
+
+  #  warn 'P: ' , $p->attr('id') ;
+  #  warn 'H: ' , $p->as_HTML;
+
+  my $id_incr = make_counter;
+  my @item = map {
+    my $new_item = clone $p;
+    $new_item->replace_content($_);
+    $new_item->attr('id', $id_incr->( $p->attr('id') ));
+    $new_item;
+  } @data;
+
+  $p->replace_with(@item);
+
+}
+
+
+sub HTML::Element::dual_iter {
+  my ($parent, $data) = @_;
+
+  my ($prototype_a, $prototype_b) = $parent->content_list;
+
+  my $id_incr = make_counter;
+
+  my $i;
+
+  @$data %2 == 0 or 
+    confess 'dataset does not contain an even number of members';
+
+  my @iterable_data = reform (2, @$data);
+
+  my @item = map {
+    my ($new_a, $new_b) = map { clone $_ } ($prototype_a, $prototype_b) ;
+    $new_a->splice_content(0,1, $_->[0]);
+    $new_b->splice_content(0,1, $_->[1]);
+    $_->attr('id', $id_incr->($_->attr('id'))) for ($new_a, $new_b) ;
+    ($new_a, $new_b)
+  } @iterable_data;
+
+  $parent->delete_content;
+  $parent->push_content(@item);
+
+}
+
 
 sub HTML::Element::set_child_content {
   my $tree      = shift;
@@ -465,7 +521,7 @@ available here is discussed.
  </html>
 
 
-=head4 The manual way (not recommended)
+=head4 The manual way (<b>NOT</b> recommended)
 
  require 'simple-class.pl';
  use HTML::Seamstress;

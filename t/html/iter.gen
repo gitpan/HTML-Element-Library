@@ -1,0 +1,10 @@
+<html>
+  <head></head>
+  <body>Here are the things I need from the store:
+    <ul>
+      <li id="store_items:1">bread</li>
+      <li id="store_items:2">butter</li>
+      <li id="store_items:3">vodka</li>
+    </ul>
+  </body>
+</html>

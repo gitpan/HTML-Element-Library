@@ -1,6 +1,7 @@
 Changes
 HTML-Element-Library-0.01.tar.gz
 HTML-Element-Library-0.02.tar.gz
+HTML-Element-Library-0.03.tar.gz
 lib/HTML/Element/Library.pm
 lib/HTML/Element/Library.pm.foy
 Makefile.PL
@@ -17,6 +18,9 @@ t/html/highlander-5.gen
 t/html/highlander-50.exp
 t/html/highlander-50.gen
 t/html/highlander.html
+t/html/iter.exp
+t/html/iter.gen
+t/html/iter.html
 t/html/table-alt.exp
 t/html/table-alt.gen
 t/html/table-alt.html
@@ -26,6 +30,7 @@ t/html/table.html
 t/html/unroll_select.exp
 t/html/unroll_select.gen
 t/html/unroll_select.html
+t/iter.t
 t/position.t
 t/q
 t/replace_content.t
