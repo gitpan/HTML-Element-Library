@@ -11,9 +11,9 @@ use HTML::Element::Library;
 
 use SimpleClass;
 
-my $root = 't/html/table';
+my $root = 't/html/table-alt';
 my $o    = SimpleClass->new;
-my $tree = HTML::TreeBuilder->new_from_file('t/html/table.html');
+my $tree = HTML::TreeBuilder->new_from_file("$root.html");
 
 
 $tree->table
@@ -27,7 +27,7 @@ $tree->table
     # tell seamstress where to find the tr. This is a bit useless as
     # the <tr> usually can be found as the first child of the parent
  
-      gi_tr       => 'data_row',
+      gi_tr       => ['iterate1', 'iterate2'],
       
     # the model data to be pushed into the table
  

@@ -5,8 +5,8 @@ use strict;
 use warnings;
 
 
-#our $DEBUG = 0;
-our $DEBUG = 1;
+our $DEBUG = 0;
+#our $DEBUG = 1;
 
 use Carp qw(confess);
 use Data::Dumper;
@@ -20,7 +20,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 our @EXPORT_OK   = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT      = qw();
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 
@@ -198,6 +198,36 @@ sub HTML::Element::table {
 
 }
 
+sub HTML::Element::unroll_select {
+
+  my ($s, %select) = @_;
+
+  my $select = {};
+
+  my $select_node = $s->look_down(id => $select{select_label});
+
+  my $option = $select_node->look_down('_tag' => 'option');
+
+#  warn $option;
+
+
+  $option->detach;
+
+  while (my $row = $select{data_iter}->($select{data}))
+    {
+      warn Dumper($row);
+      my $o = $option->clone;
+      $o->attr('value', $select{option_value}->($row));
+      $o->attr('SELECTED', 1) if ($select{option_selected}->($row)) ;
+
+      $o->replace_content($select{option_content}->($row));
+      $select_node->push_content($o);
+    }
+
+
+}
+
+
 
 sub HTML::Element::set_sibling_content {
   my ($elt, $content) = @_;
@@ -337,6 +367,32 @@ And there we have it. If the age is less than 10, then the node with
 id C<under10> remains. For age less than 18, the node with id C<under18> 
 remains.
 Otherwise our "else" condition fires and the child with id C<welcome> remains.
+
+=head2 Tree-Building Methods: Select Unrolling
+
+The C<unroll_select> method has this API:
+
+   $tree->unroll_select(
+      select_label    => $id_label,
+      option_value    => $closure, # how to get option value from data row
+      option_content  => $closure, # how to get option content from data row
+      option_selected => $closure, # boolean to decide if SELECTED
+      data         => $data        # the data to be put into the SELECT
+      data_iter    => $closure     # the thing that will get a row of data
+    );
+
+Here's an example:
+
+$tree->unroll_select(
+   select_label     => 'clan_list', 
+   option_value     => sub { my $row = shift; $row->clan_id },
+   option_content   => sub { my $row = shift; $row->clan_name },
+   option_selected  => sub { my $row = shift; $row->selected },
+   data             => \@query_results, 
+   data_iter        => sub { my $data = shift; $data->next }
+)
+
+
 
 =head2 Tree-Building Methods: Table Generation
 
