@@ -20,7 +20,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 our @EXPORT_OK   = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT      = qw();
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 # Preloaded methods go here.
 
@@ -195,6 +195,7 @@ sub HTML::Element::highlander {
 
   warn "new tree: " . $tree->as_HTML if $DEBUG;
 
+  $survivor_node;
 }
 
 
@@ -203,6 +204,10 @@ sub HTML::Element::table {
   my ($s, %table) = @_;
 
   my $table = {};
+
+#  use Data::Dumper; warn Dumper \%table;
+
+  ++$DEBUG if $table{debug} ;
 
   $table->{table_node} = $s->look_down(id => $table{gi_table});
   $table->{table_node} or confess
@@ -220,7 +225,7 @@ sub HTML::Element::table {
 #  tie my $iter_node, 'Tie::Cycle', \@iter_node;
   my $iter_node =  List::Rotation::Cycle->new(@iter_node);
 
-  warn $iter_node;
+#  warn $iter_node;
 
   warn Dumper ($iter_node, \@iter_node) if $DEBUG;
 
@@ -228,16 +233,14 @@ sub HTML::Element::table {
   $table->{parent}     = $table->{table_node}->parent;
 
 
-  $table->{table_node}->detach;
-  $_->detach for @iter_node;
+#  $table->{table_node}->detach;
+#  $_->detach for @iter_node;
 
-  my $add_table;
+  my @table_rows;
 
   while (my $row = $table{tr_data}->($table, $table{table_data})) 
     {
-      ++$add_table;
 
-      warn "add_table: $add_table" if $DEBUG;
 
 
       # wont work:      my $new_iter_node = $table->{iter_node}->clone;
@@ -247,10 +250,21 @@ sub HTML::Element::table {
 
 
       $table{td_data}->($new_iter_node, $row);
-      $table->{table_node}->push_content($new_iter_node);
+      push @table_rows, $new_iter_node;
     }
 
-  $table->{parent}->push_content($table->{table_node}) if $add_table;
+  if (@table_rows) {
+
+    my $replace_with_elem = $s->look_down(id => shift @table_gi_tr) ;
+    for (@table_gi_tr) {
+      $s->look_down(id => $_)->detach;
+    }
+
+    $replace_with_elem->replace_with(@table_rows);
+
+  }
+
+
 
 }
 
@@ -271,7 +285,7 @@ sub HTML::Element::unroll_select {
 
   while (my $row = $select{data_iter}->($select{data}))
     {
-      warn Dumper($row);
+#      warn Dumper($row);
       my $o = $option->clone;
       $o->attr('value', $select{option_value}->($row));
       $o->attr('SELECTED', 1) if ($select{option_selected}->($row)) ;
@@ -521,7 +535,7 @@ available here is discussed.
  </html>
 
 
-=head4 The manual way (<b>NOT</b> recommended)
+=head4 The manual way (*NOT* recommended)
 
  require 'simple-class.pl';
  use HTML::Seamstress;

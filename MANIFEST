@@ -1,9 +1,5 @@
 Changes
-HTML-Element-Library-0.01.tar.gz
-HTML-Element-Library-0.02.tar.gz
-HTML-Element-Library-0.03.tar.gz
 lib/HTML/Element/Library.pm
-lib/HTML/Element/Library.pm.foy
 Makefile.PL
 MANIFEST			This list of files
 META.yml
