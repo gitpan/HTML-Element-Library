@@ -409,7 +409,7 @@ available here is discussed.
  </html>
 
 
-=head4 Perl
+=head4 The manual way (not recommended)
 
  require 'simple-class.pl';
  use HTML::Seamstress;

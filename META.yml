@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         HTML-Element-Library
-version:      0.01
+version:      0.02
 version_from: lib/HTML/Element/Library.pm
 installdirs:  site
 requires:
@@ -9,9 +9,9 @@ requires:
     HTML::PrettyPrinter:           0.03
     HTML::Tree:                    3.18
     List::MoreUtils:               0.09
+    List::Rotation::Cycle:         1.003
     Scalar::Listify:               0.02
     Set::Array:                    0.11
-    Tie::Cycle:                    1.06
 
 distribution_type: module
 generated_by: ExtUtils::MakeMaker version 6.17

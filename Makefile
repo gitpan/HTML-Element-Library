@@ -6,14 +6,14 @@
 #
 #       ANY CHANGES MADE HERE WILL BE LOST!
 #
-#   MakeMaker ARGV: (q[PREFIX=/home/terry/perl])
+#   MakeMaker ARGV: ()
 #
 #   MakeMaker Parameters:
 
 #     ABSTRACT_FROM => q[lib/HTML/Element/Library.pm]
 #     AUTHOR => q[Terrence Brannon <terry@hcoop.net>]
 #     NAME => q[HTML::Element::Library]
-#     PREREQ_PM => { Set::Array=>q[0.11], HTML::PrettyPrinter=>q[0.03], Scalar::Listify=>q[0.02], List::MoreUtils=>q[0.09], HTML::Tree=>q[3.18], Tie::Cycle=>q[1.06], File::Slurp=>q[9999.06] }
+#     PREREQ_PM => { Set::Array=>q[0.11], HTML::PrettyPrinter=>q[0.03], Scalar::Listify=>q[0.02], List::Rotation::Cycle=>q[1.003], List::MoreUtils=>q[0.09], HTML::Tree=>q[3.18], File::Slurp=>q[9999.06] }
 #     VERSION_FROM => q[lib/HTML/Element/Library.pm]
 
 # --- MakeMaker post_initialize section:
@@ -53,11 +53,11 @@ AR_STATIC_ARGS = cr
 DIRFILESEP = /
 NAME = HTML::Element::Library
 NAME_SYM = HTML_Element_Library
-VERSION = 0.01
+VERSION = 0.02
 VERSION_MACRO = VERSION
-VERSION_SYM = 0_01
+VERSION_SYM = 0_02
 DEFINE_VERSION = -D$(VERSION_MACRO)=\"$(VERSION)\"
-XS_VERSION = 0.01
+XS_VERSION = 0.02
 XS_VERSION_MACRO = XS_VERSION
 XS_DEFINE_VERSION = -D$(XS_VERSION_MACRO)=\"$(XS_VERSION)\"
 INST_ARCHLIB = blib/arch
@@ -70,9 +70,9 @@ MAN1EXT = 1p
 MAN3EXT = 3pm
 INSTALLDIRS = site
 DESTDIR = 
-PREFIX = /home/terry/perl
+PREFIX = /usr
 PERLPREFIX = $(PREFIX)
-SITEPREFIX = $(PREFIX)
+SITEPREFIX = $(PREFIX)/local
 VENDORPREFIX = $(PREFIX)
 INSTALLPRIVLIB = $(PERLPREFIX)/share/perl/5.8
 DESTINSTALLPRIVLIB = $(DESTDIR)$(INSTALLPRIVLIB)
@@ -241,7 +241,7 @@ RCS_LABEL = rcs -Nv$(VERSION_SYM): -q
 DIST_CP = best
 DIST_DEFAULT = tardist
 DISTNAME = HTML-Element-Library
-DISTVNAME = HTML-Element-Library-0.01
+DISTVNAME = HTML-Element-Library-0.02
 
 
 # --- MakeMaker macro section:
@@ -434,7 +434,7 @@ metafile :
 	$(NOECHO) $(ECHO) '# http://module-build.sourceforge.net/META-spec.html' > META.yml
 	$(NOECHO) $(ECHO) '#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#' >> META.yml
 	$(NOECHO) $(ECHO) 'name:         HTML-Element-Library' >> META.yml
-	$(NOECHO) $(ECHO) 'version:      0.01' >> META.yml
+	$(NOECHO) $(ECHO) 'version:      0.02' >> META.yml
 	$(NOECHO) $(ECHO) 'version_from: lib/HTML/Element/Library.pm' >> META.yml
 	$(NOECHO) $(ECHO) 'installdirs:  site' >> META.yml
 	$(NOECHO) $(ECHO) 'requires:' >> META.yml
@@ -442,9 +442,9 @@ metafile :
 	$(NOECHO) $(ECHO) '    HTML::PrettyPrinter:           0.03' >> META.yml
 	$(NOECHO) $(ECHO) '    HTML::Tree:                    3.18' >> META.yml
 	$(NOECHO) $(ECHO) '    List::MoreUtils:               0.09' >> META.yml
+	$(NOECHO) $(ECHO) '    List::Rotation::Cycle:         1.003' >> META.yml
 	$(NOECHO) $(ECHO) '    Scalar::Listify:               0.02' >> META.yml
 	$(NOECHO) $(ECHO) '    Set::Array:                    0.11' >> META.yml
-	$(NOECHO) $(ECHO) '    Tie::Cycle:                    1.06' >> META.yml
 	$(NOECHO) $(ECHO) '' >> META.yml
 	$(NOECHO) $(ECHO) 'distribution_type: module' >> META.yml
 	$(NOECHO) $(ECHO) 'generated_by: ExtUtils::MakeMaker version 6.17' >> META.yml
@@ -636,7 +636,7 @@ $(FIRST_MAKEFILE) : Makefile.PL $(CONFIGDEP)
 	$(NOECHO) $(RM_F) $(MAKEFILE_OLD)
 	$(NOECHO) $(MV)   $(FIRST_MAKEFILE) $(MAKEFILE_OLD)
 	-$(MAKE) -f $(MAKEFILE_OLD) clean $(DEV_NULL) || $(NOOP)
-	$(PERLRUN) Makefile.PL "PREFIX=/home/terry/perl"
+	$(PERLRUN) Makefile.PL 
 	$(NOECHO) $(ECHO) "==> Your Makefile has been rebuilt. <=="
 	$(NOECHO) $(ECHO) "==> Please rerun the make command.  <=="
 	false
@@ -657,8 +657,7 @@ $(MAKE_APERL_FILE) : $(FIRST_MAKEFILE)
 	$(NOECHO) $(PERLRUNINST) \
 		Makefile.PL DIR= \
 		MAKEFILE=$(MAKE_APERL_FILE) LINKTYPE=static \
-		MAKEAPERL=1 NORECURS=1 CCCDLFLAGS= \
-		PREFIX=/home/terry/perl
+		MAKEAPERL=1 NORECURS=1 CCCDLFLAGS=
 
 
 # --- MakeMaker test section:
@@ -688,7 +687,7 @@ testdb_static :: testdb_dynamic
 # --- MakeMaker ppd section:
 # Creates a PPD (Perl Package Description) for a binary distribution.
 ppd:
-	$(NOECHO) $(ECHO) '<SOFTPKG NAME="$(DISTNAME)" VERSION="0,01,0,0">' > $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) '<SOFTPKG NAME="$(DISTNAME)" VERSION="0,02,0,0">' > $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '    <TITLE>$(DISTNAME)</TITLE>' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '    <ABSTRACT>HTML::Element convenience functions</ABSTRACT>' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '    <AUTHOR>Terrence Brannon &lt;terry@hcoop.net&gt;</AUTHOR>' >> $(DISTNAME).ppd
@@ -697,9 +696,9 @@ ppd:
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="HTML-PrettyPrinter" VERSION="0,03,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="HTML-Tree" VERSION="3,18,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="List-MoreUtils" VERSION="0,09,0,0" />' >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="List-Rotation-Cycle" VERSION="1,003,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="Scalar-Listify" VERSION="0,02,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="Set-Array" VERSION="0,11,0,0" />' >> $(DISTNAME).ppd
-	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="Tie-Cycle" VERSION="1,06,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <OS NAME="$(OSNAME)" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <ARCHITECTURE NAME="i386-linux-thread-multi" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <CODEBASE HREF="" />' >> $(DISTNAME).ppd

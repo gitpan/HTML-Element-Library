@@ -12,6 +12,7 @@ WriteMakefile(
 	       HTML::Tree => 3.18,
 	       List::MoreUtils => 0.09,
 	       Scalar::Listify => 0.02,
+	       Set::Array => 0.11,
 	       Tie::Cycle => 1.06,
 	      }, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005

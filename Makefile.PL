@@ -10,10 +10,10 @@ WriteMakefile(
 	       File::Slurp => 9999.06,
 	       HTML::PrettyPrinter => 0.03,
 	       HTML::Tree => 3.18,
+	       List::Rotation::Cycle => 1.003,
 	       List::MoreUtils => 0.09,
 	       Scalar::Listify => 0.02,
 	       Set::Array => 0.11,
-	       Tie::Cycle => 1.06,
 	      }, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/HTML/Element/Library.pm', # retrieve abstract from module
