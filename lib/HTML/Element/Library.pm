@@ -13,14 +13,14 @@ use Data::Dumper;
 use HTML::Element;
 use List::MoreUtils qw/:all/;
 use Scalar::Listify;
-use Tie::Cycle;
+#use Tie::Cycle;
 use List::Rotation::Cycle;
 
 our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 our @EXPORT_OK   = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT      = qw();
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 # Preloaded methods go here.
 
@@ -207,7 +207,7 @@ sub HTML::Element::table {
 
 #  use Data::Dumper; warn Dumper \%table;
 
-  ++$DEBUG if $table{debug} ;
+#  ++$DEBUG if $table{debug} ;
 
   $table->{table_node} = $s->look_down(id => $table{gi_table});
   $table->{table_node} or confess
@@ -238,10 +238,9 @@ sub HTML::Element::table {
 
   my @table_rows;
 
-  while (my $row = $table{tr_data}->($table, $table{table_data})) 
-    {
-
-
+  {
+    my $row = $table{tr_data}->($table, $table{table_data});
+    last unless defined $row;
 
       # wont work:      my $new_iter_node = $table->{iter_node}->clone;
       my $I = $iter_node->next;
@@ -251,7 +250,9 @@ sub HTML::Element::table {
 
       $table{td_data}->($new_iter_node, $row);
       push @table_rows, $new_iter_node;
-    }
+
+    redo;
+  }
 
   if (@table_rows) {
 
@@ -263,8 +264,6 @@ sub HTML::Element::table {
     $replace_with_elem->replace_with(@table_rows);
 
   }
-
-
 
 }
 
@@ -453,14 +452,14 @@ The C<unroll_select> method has this API:
 
 Here's an example:
 
-$tree->unroll_select(
+ $tree->unroll_select(
    select_label     => 'clan_list', 
    option_value     => sub { my $row = shift; $row->clan_id },
    option_content   => sub { my $row = shift; $row->clan_name },
    option_selected  => sub { my $row = shift; $row->selected },
    data             => \@query_results, 
    data_iter        => sub { my $data = shift; $data->next }
-)
+ )
 
 
 
