@@ -20,7 +20,8 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 our @EXPORT_OK   = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT      = qw();
 
-our $VERSION = '0.06';
+our ($VERSION) = ('$Revision: 1.2 $' =~ m/([\.\d]+)/) ;
+
 
 # Preloaded methods go here.
 
@@ -83,7 +84,6 @@ sub HTML::Element::content_handler {
   $tree->set_child_content(id => $id_name, $content);
 
 }
-
 
 sub make_counter {
   my $i = 1;
@@ -196,6 +196,46 @@ sub HTML::Element::highlander {
   warn "new tree: " . $tree->as_HTML if $DEBUG;
 
   $survivor_node;
+}
+
+
+sub overwrite_action {
+  my ($mute_node, %X) = @_;
+
+  $mute_node->attr($X{local_attr}{name} => $X{local_attr}{value}{new});
+}
+
+
+sub HTML::Element::overwrite_attr {
+  my $tree = shift;
+  
+  $tree->mute_elem(@_, \&overwrite_action);
+}
+
+
+
+sub HTML::Element::mute_elem {
+  my ($tree, $mute_attr, $closures, $post_hook) = @_;
+
+  warn "my mute_node = $tree->look_down($mute_attr => qr/.*/) ;";
+  my @mute_node = $tree->look_down($mute_attr => qr/.*/) ;
+
+  for my $mute_node (@mute_node) {
+    my ($local_attr,$mute_key)        = split /\s+/, $mute_node->attr($mute_attr);
+    my $local_attr_value_current      = $mute_node->attr($local_attr);
+    my $local_attr_value_new          = $closures->{$mute_key}->($tree, $mute_node, $local_attr_value_current);
+    $post_hook->(
+      $mute_node,
+      tree => $tree,
+      local_attr => {
+	name => $local_attr,
+	value => {
+	  current => $local_attr_value_current,
+	  new     => $local_attr_value_new
+	 }
+       }
+     ) if ($post_hook) ;
+  }
 }
 
 
@@ -436,6 +476,56 @@ And there we have it. If the age is less than 10, then the node with
 id C<under10> remains. For age less than 18, the node with id C<under18> 
 remains.
 Otherwise our "else" condition fires and the child with id C<welcome> remains.
+
+=head3 $tree->overwrite_attr($mutation_attr => $mutating_closures)
+
+This method is designed for taking a tree and reworking a set of nodes in a stereotyped fashion. 
+For instance let's say you have 3 remote image archives, but you don't want to put long URLs in your img src
+tags for reasons of abstraction, re-use and brevity. So instead you do this:
+
+  <img src="/img/smiley-face.jpg" fixup="src lnc">
+  <img src="/img/hot-babe.jpg"    fixup="src playboy">
+  <img src="/img/footer.jpg"      fixup="src foobar">
+
+and then when the tree of HTML is being processed, you make this call:
+
+  my %closures = (
+     lnc     => sub { my ($tree, $mute_node, $attr_value)= @_; "http://lnc.usc.edu$attr_value" },
+     playboy => sub { my ($tree, $mute_node, $attr_value)= @_; "http://playboy.com$attr_value" }
+     foobar  => sub { my ($tree, $mute_node, $attr_value)= @_; "http://foobar.info$attr_value" }
+  )
+
+  $tree->overwrite_attr(fixup => \%closures) ;
+
+and the tags come out modified like so:
+
+  <img src="http://lnc.usc.edu/img/smiley-face.jpg" fixup="src lnc">
+  <img src="http://playboy.com/img/hot-babe.jpg"    fixup="src playboy">
+  <img src="http://foobar.info/img/footer.jpg"      fixup="src foobar">
+
+=head3 $tree->mute_elem($mutation_attr => $mutating_closures, [ $post_hook ] )
+
+This is a generalization of C<overwrite_attr>. C<overwrite_attr> assumes the return value of the 
+closure is supposed overwrite an attribute value and does it for you. 
+C<mute_elem> is a more general function which does nothing but 
+hand the closure the element and let it mutate it as it jolly well pleases :)
+
+In fact, here is the implementation of C<overwrite_attr> to give you a taste of how C<mute_attr> is used:
+
+ sub overwrite_action {
+   my ($mute_node, %X) = @_;
+
+   $mute_node->attr($X{local_attr}{name} => $X{local_attr}{value}{new});
+ }
+
+
+ sub HTML::Element::overwrite_attr {
+   my $tree = shift;
+  
+   $tree->mute_elem(@_, \&overwrite_action);
+ }
+
+
 
 =head2 Tree-Building Methods: Select Unrolling
 
