@@ -12,6 +12,7 @@ use Carp qw(confess);
 use Data::Dumper;
 use HTML::Element;
 use List::MoreUtils qw/:all/;
+use Params::Validate qw(:all);
 use Scalar::Listify;
 #use Tie::Cycle;
 use List::Rotation::Cycle;
@@ -20,8 +21,8 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 our @EXPORT_OK   = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT      = qw();
 
-our ($VERSION) = ('$Revision: 1.2 $' =~ m/([\.\d]+)/) ;
-
+#our $VERSION = '0.06';
+our ($VERSION) = ('$Revision: 1.9 $' =~ m/([\.\d]+)/) ;
 
 # Preloaded methods go here.
 
@@ -60,6 +61,12 @@ sub HTML::Element::wrap_content {
   $wrap;
 }
 
+sub HTML::Element::Library::super_literal {
+  my($text) = @_;
+
+  HTML::Element->new('~literal', text => $text);
+}
+
 
 sub HTML::Element::position {
   # Report coordinates by chasing addr's up the
@@ -84,6 +91,7 @@ sub HTML::Element::content_handler {
   $tree->set_child_content(id => $id_name, $content);
 
 }
+
 
 sub make_counter {
   my $i = 1;
@@ -199,60 +207,23 @@ sub HTML::Element::highlander {
 }
 
 
-sub overwrite_action {
-  my ($mute_node, %X) = @_;
-
-  $mute_node->attr($X{local_attr}{name} => $X{local_attr}{value}{new});
-}
-
-
-sub HTML::Element::overwrite_attr {
-  my $tree = shift;
-  
-  $tree->mute_elem(@_, \&overwrite_action);
-}
-
-
-
-sub HTML::Element::mute_elem {
-  my ($tree, $mute_attr, $closures, $post_hook) = @_;
-
-  warn "my mute_node = $tree->look_down($mute_attr => qr/.*/) ;";
-  my @mute_node = $tree->look_down($mute_attr => qr/.*/) ;
-
-  for my $mute_node (@mute_node) {
-    my ($local_attr,$mute_key)        = split /\s+/, $mute_node->attr($mute_attr);
-    my $local_attr_value_current      = $mute_node->attr($local_attr);
-    my $local_attr_value_new          = $closures->{$mute_key}->($tree, $mute_node, $local_attr_value_current);
-    $post_hook->(
-      $mute_node,
-      tree => $tree,
-      local_attr => {
-	name => $local_attr,
-	value => {
-	  current => $local_attr_value_current,
-	  new     => $local_attr_value_new
-	 }
-       }
-     ) if ($post_hook) ;
-  }
-}
-
-
 sub HTML::Element::table {
 
   my ($s, %table) = @_;
 
   my $table = {};
 
-#  use Data::Dumper; warn Dumper \%table;
+  #  use Data::Dumper; warn Dumper \%table;
 
-#  ++$DEBUG if $table{debug} ;
+  #  ++$DEBUG if $table{debug} ;
 
+
+  # Get the table element
   $table->{table_node} = $s->look_down(id => $table{gi_table});
   $table->{table_node} or confess
     "table tag not found via (id => $table{gi_table}";
 
+  # Get the prototype tr element(s) 
   my @table_gi_tr = listify $table{gi_tr} ;
   my @iter_node = map 
     {
@@ -262,19 +233,18 @@ sub HTML::Element::table {
     } @table_gi_tr;
 
   warn "found " . @iter_node . " iter nodes " if $DEBUG;
-#  tie my $iter_node, 'Tie::Cycle', \@iter_node;
+  #  tie my $iter_node, 'Tie::Cycle', \@iter_node;
   my $iter_node =  List::Rotation::Cycle->new(@iter_node);
 
-#  warn $iter_node;
-
+  #  warn $iter_node;
   warn Dumper ($iter_node, \@iter_node) if $DEBUG;
 
-  $table->{content}    = $table{content};
-  $table->{parent}     = $table->{table_node}->parent;
+  # $table->{content}    = $table{content};
+  #$table->{parent}     = $table->{table_node}->parent;
 
 
-#  $table->{table_node}->detach;
-#  $_->detach for @iter_node;
+  #  $table->{table_node}->detach;
+  #  $_->detach for @iter_node;
 
   my @table_rows;
 
@@ -282,10 +252,10 @@ sub HTML::Element::table {
     my $row = $table{tr_data}->($table, $table{table_data});
     last unless defined $row;
 
-      # wont work:      my $new_iter_node = $table->{iter_node}->clone;
-      my $I = $iter_node->next;
-      warn  "I: $I" if $DEBUG;
-      my $new_iter_node = $I->clone;
+    # get a sample table row and clone it.
+    my $I = $iter_node->next;
+    warn  "I: $I" if $DEBUG;
+    my $new_iter_node = $I->clone;
 
 
       $table{td_data}->($new_iter_node, $row);
@@ -306,6 +276,95 @@ sub HTML::Element::table {
   }
 
 }
+
+sub ref_or_ld {
+
+  my ($tree, $slot) = @_;
+
+  if (ref($slot) eq 'CODE') {
+    $slot->($tree);
+  } else {
+    $tree->look_down(@$slot);
+  }
+}
+
+
+
+sub HTML::Element::table2 {
+
+  my $tree = shift;
+
+  my %p = validate(
+    @_, {
+      table_ld    => { default => ['_tag' => 'table'] },
+      table_data  => 1,
+      table_proc  => { default => undef },
+      
+      tr_ld       => { default => ['_tag' => 'tr']    },
+      tr_data     => { default => sub { my ($self, $data) = @_;
+				      shift(@{$data}) ;
+				    }},
+      tr_proc     => { 
+	default => sub { 
+	  my ($self, $tr, $tr_data, $row_count, $root_id) = @_;
+	  $tr->attr(id => sprintf "%s_%d", $root_id, $row_count);
+	}},
+      td_proc     => 1,
+      debug => {default => 0}
+     }
+   );
+
+  warn "table_data: " . Dumper $p{table_data} if $p{debug} ;
+
+  my $table = {};
+
+  #  use Data::Dumper; warn Dumper \%table;
+
+  #  ++$DEBUG if $table{debug} ;
+
+  # Get the table element
+  $table->{table_node} = ref_or_ld( $tree, $p{table_ld} ) ;
+  $table->{table_node} or confess
+    "table tag not found via " . Dumper($p{table_ld}) ;
+
+  warn "table: " . $table->{table_node}->as_HTML if $p{debug};
+
+
+  # Get the prototype tr element(s) 
+  my @proto_tr = ref_or_ld( $table->{table_node},  $p{tr_ld} ) ;
+
+  warn "found " . @proto_tr . " iter nodes " if $p{debug};
+  if ($p{debug}) {
+    warn $_->as_HTML for @proto_tr;
+  }
+  my $proto_tr =  List::Rotation::Cycle->new(@proto_tr);
+
+  my $tr_parent = $proto_tr[0]->parent;
+  warn "parent element of trs: " . $tr_parent->as_HTML if $p{debug};
+
+  my @table_rows;
+
+  {
+    my $row = $p{tr_data}->($table, $p{table_data});
+    warn  "data row: " . Dumper $row if $p{debug};
+    last unless defined $row;
+
+      # wont work:      my $new_iter_node = $table->{iter_node}->clone;
+      my $new_tr_node = $proto_tr->next->clone;
+      warn  "new_tr_node: $new_tr_node" if $p{debug};
+
+      $p{td_proc}->($new_tr_node, $row);
+      push @table_rows, $new_tr_node;
+
+    redo;
+  }
+
+  $_->detach for @proto_tr;
+
+  $tr_parent->push_content(@table_rows) if (@table_rows) ;
+
+}
+
 
 sub HTML::Element::unroll_select {
 
@@ -345,6 +404,13 @@ sub HTML::Element::set_sibling_content {
 
 }
 
+sub HTML::TreeBuilder::parse_string {
+  my ($package, $string) = @_;
+
+  my $h = HTML::TreeBuilder->new;
+  HTML::TreeBuilder->parse($string);
+
+}
 
 
 
@@ -396,6 +462,19 @@ This is accomplished by succesively calling addr() on ancestor
 elements until either a) an element that does not support these
 methods is found, or b) there are no more parents.  The resulting
 list is the n-dimensional coordinates of the element in the tree.
+
+=head2 Element Decoration Methods
+
+=head3 HTML::Element::Library::super_literal($text)
+
+In L<HTML::Element>, Sean Burke discusses super-literals. They are
+text which does not get escaped. Great for includng Javascript in
+HTML. Also great for including foreign language into a document.
+
+So, you basically toss C<super_literal> your text and back comes
+your text wrapped in a C<~literal> element.
+
+One of these days, I'll around to writing a nice C<EXPORT> section.
 
 =head2 Tree Rewriting Methods
 
@@ -477,55 +556,36 @@ id C<under10> remains. For age less than 18, the node with id C<under18>
 remains.
 Otherwise our "else" condition fires and the child with id C<welcome> remains.
 
-=head3 $tree->overwrite_attr($mutation_attr => $mutating_closures)
+=head2 Tree-Building Methods: Single ("li") Iteration
 
-This method is designed for taking a tree and reworking a set of nodes in a stereotyped fashion. 
-For instance let's say you have 3 remote image archives, but you don't want to put long URLs in your img src
-tags for reasons of abstraction, re-use and brevity. So instead you do this:
+This is best described by example. Given this HTML:
 
-  <img src="/img/smiley-face.jpg" fixup="src lnc">
-  <img src="/img/hot-babe.jpg"    fixup="src playboy">
-  <img src="/img/footer.jpg"      fixup="src foobar">
+ <strong>Here are the things I need from the store:</strong>
+ <ul>
+   <li id="store_items">Sample item</li>
+ </ul>
 
-and then when the tree of HTML is being processed, you make this call:
+We can unroll it like so:
 
-  my %closures = (
-     lnc     => sub { my ($tree, $mute_node, $attr_value)= @_; "http://lnc.usc.edu$attr_value" },
-     playboy => sub { my ($tree, $mute_node, $attr_value)= @_; "http://playboy.com$attr_value" }
-     foobar  => sub { my ($tree, $mute_node, $attr_value)= @_; "http://foobar.info$attr_value" }
-  )
+  my $li = $tree->look_down(id => 'store_items');
 
-  $tree->overwrite_attr(fixup => \%closures) ;
+  my @items = qw(bread butter vodka);
 
-and the tags come out modified like so:
+  $tree->iter($li, @items);
 
-  <img src="http://lnc.usc.edu/img/smiley-face.jpg" fixup="src lnc">
-  <img src="http://playboy.com/img/hot-babe.jpg"    fixup="src playboy">
-  <img src="http://foobar.info/img/footer.jpg"      fixup="src foobar">
-
-=head3 $tree->mute_elem($mutation_attr => $mutating_closures, [ $post_hook ] )
-
-This is a generalization of C<overwrite_attr>. C<overwrite_attr> assumes the return value of the 
-closure is supposed overwrite an attribute value and does it for you. 
-C<mute_elem> is a more general function which does nothing but 
-hand the closure the element and let it mutate it as it jolly well pleases :)
-
-In fact, here is the implementation of C<overwrite_attr> to give you a taste of how C<mute_attr> is used:
-
- sub overwrite_action {
-   my ($mute_node, %X) = @_;
-
-   $mute_node->attr($X{local_attr}{name} => $X{local_attr}{value}{new});
- }
+To produce this:
 
 
- sub HTML::Element::overwrite_attr {
-   my $tree = shift;
-  
-   $tree->mute_elem(@_, \&overwrite_action);
- }
-
-
+ <html>
+  <head></head>
+  <body>Here are the things I need from the store:
+    <ul>
+      <li id="store_items:1">bread</li>
+      <li id="store_items:2">butter</li>
+      <li id="store_items:3">vodka</li>
+    </ul>
+  </body>
+ </html>
 
 =head2 Tree-Building Methods: Select Unrolling
 
@@ -676,7 +736,7 @@ available here is discussed.
  
 
 
-=head3 Seamstress API call to Unroll a Table
+=head3 $tree->table() : API call to Unroll a Table
 
  require 'simple-class.pl';
  use HTML::Seamstress;
@@ -723,7 +783,8 @@ available here is discussed.
  print $seamstress->as_HTML;
 
 
-=head3 Looping over Multiple Sample Rows
+
+=head4 Looping over Multiple Sample Rows
 
 * HTML
 
@@ -762,6 +823,150 @@ This:
 becomes this:
 
 	gi_tr       => ['iterate1', 'iterate2']
+
+=head3 $tree->table2() : New API Call to Unroll a Table
+
+After 2 or 3 years with C<table()>, I began to develop 
+production websites with it and decided it needed a cleaner
+interface, particularly in the area of handling the fact that 
+C<id> tags will be the same after cloning a table row.
+
+First, I will give a dry listing of the function's argument parameters. 
+This will not be educational most likely. A better way to understand how
+to use the function is to read through the incremental unrolling of the 
+function's interface given in conversational style after the dry listing.
+But take your pick. It's the same information given in two different
+ways.
+
+=head4 Dry/technical parameter documentation
+
+C<< $tree->table2(%param) >> takes the following arguments:
+
+=over
+
+=item * C<< table_ld => $look_down >> : optional
+
+How to find the C<table> element in C<$tree>. If C<$look_down> is an 
+arrayref, then use C<look_down>. If it is a CODE ref, then call it,
+passing it C<$tree>.
+
+Defaults to C<< ['_tag' => 'table'] >> if not passed in.
+
+=item * C<< table_data => $tabular_data >> : required
+
+The data to fill the table with. I<Must> be passed in.
+
+=item * C<< table_proc => $code_ref >> : not implemented
+
+A subroutine to do something to the table once it is found.
+Not currently implemented. Not obviously necessary. Just
+created because there is a C<tr_proc> and C<td_proc>.
+
+=item * C<< tr_ld => $look_down >> : optional
+
+Same as C<table_ld> but for finding the table row elements. Please note
+that the C<tr_ld> is done on the table node that was found below I<instead>
+of the whole HTML tree. This makes sense. The C<tr>s that you want exist
+below the table that was just found.
+
+=item * C<< tr_data => $code_ref >> : optional
+
+How to take the C<table_data> and return a row. Defaults to:
+
+ sub { my ($self, $data) = @_;
+      shift(@{$data}) ;
+ }
+				
+=item * C<< tr_proc => $code_ref >> : optional
+
+Something to do to the table row we are about to add to the
+table we are making. Defaults to a routine which makes the C<id>
+attribute unique:
+
+ sub { 
+	my ($self, $tr, $tr_data, $row_count, $root_id) = @_;
+	$tr->attr(id => sprintf "%s_%d", $root_id, $row_count);
+ }
+
+=item * C<< td_proc => $code_ref >> : required
+
+This coderef will take the row of data and operate on the C<td> cells that
+are children of the C<tr>. See C<t/table2.t> for several usage examples.
+
+=cut
+
+=head4 Conversational parameter documentation
+
+The first thing you need is a table. So we need a look down for that. If you
+don't give one, it defaults to 
+
+  ['_tag' => 'table']
+
+What good is a table to display in without data to display?! 
+So you must supply a scalar representing your tabular
+data source. This scalar might be an array reference, a C<next>able iterator,
+a DBI statement handle. Whatever it is, it can be iterated through to build 
+up rows of table data.
+These two required fields (the way to find the table and the data to
+display in the table) are C<table_ld> and C<table_data>
+respectively. A little more on C<table_ld>. If this happens to be a CODE ref, 
+then execution
+of the code ref is presumed to return the C<HTML::Element>
+representing the table in the HTML tree.
+
+Next, we get the row or rows which serve as sample C<tr> elements by doing
+a C<look_down> from the C<table_elem>. While normally one sample row 
+is enough to unroll a table, consider when you have alternating
+table rows. This API call would need one of each row so that it can 
+cycle through the
+sample rows as it loops through the data. 
+Alternatively, you could always just use one row and 
+make the necessary changes to the single C<tr> row by 
+mutating the element in C<tr_proc>, 
+discussed below. The default C<tr_ld> is
+C<< ['_tag' => 'tr'] >> but you can overwrite it. Note well, if you overwrite
+it with a subroutine, then it is expected that the subroutine will return 
+the C<HTML::Element>(s)
+which are  C<tr> element(s). 
+The reason a subroutine might be preferred is in the case
+that the HTML designers gave you 8 sample C<tr> rows but only one 
+prototype row is needed.
+So you can write a subroutine, to splice out the 7 rows you don't need 
+and leave the one sample
+row remaining so that this API call can clone it and supply it to
+the C<tr_proc> and C<td_proc> calls.
+
+Now, as we move through the table rows with table data, 
+we need to do two different things on
+each table row:
+
+=over 4
+
+=item * get one row of data from the C<table_data> via C<tr_data>
+
+The default procedure assumes the C<table_data> is an array reference and
+shifts a row off of it:
+
+   sub { my ($self, $data) = @_;
+	 shift(@{$data}) ;
+       }
+
+Your function MUST return undef when there is no more rows to lay out.
+
+=item * take the C<tr> element and mutate it via C<tr_proc>
+
+The default procedure simply makes the id of the table row unique:
+
+  sub { my ($self, $tr, $tr_data, $row_count, $root_id) = @_;
+	$tr->attr(id => sprintf "%s_%d", $root_id, $row_count);
+      }
+
+=back
+
+Now that we have our row of data, we call C<td_proc> so that it can
+take the data and the C<td> cells in this C<tr> and process them. 
+This function I<must> be supplied.
+
 
 =head3 Whither a Table with No Rows
 
@@ -811,11 +1016,10 @@ trees using cartesian coordinations.
 
 =item * L<HTML::Seamstress>
 
-An L<HTML::Tree> - based module inspired by XMLC:
+An L<HTML::Tree> - based module inspired by 
+XMLC (L<http://xmlc.enhydra.org>), allowing for dynamic
+HTML generation via tree rewriting.
 
- http://xmlc.enhydra.org
-
-which allows for non-embedded tree-based HTML templating.
 
 =head1 AUTHOR
 

@@ -13,9 +13,32 @@ WriteMakefile(
 	       List::Rotation::Cycle => 1.003,
 	       List::MoreUtils => 0.09,
 	       Scalar::Listify => 0.02,
-	       Set::Array => 0.11,
 	      }, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/HTML/Element/Library.pm', # retrieve abstract from module
        AUTHOR         => 'Terrence Brannon <terry@hcoop.net>') : ()),
 );
+
+sub MY::postamble { q{
+
+cleandist: FORCE
+	make again; make cleanmanifest; make docs; make dist
+
+again: FORCE
+	make clean; perl Makefile.PL; make pm_to_blib
+
+cleanmanifest: realclean FORCE
+	rm MANIFEST ; perl Makefile.PL; touch MANIFEST; make manifest
+
+%.t: pm_to_blib FORCE
+	make; perl -Iblib/lib $@
+
+docs : README CHANGES
+
+README: lib/HTML/Element/Library.pm
+	pod2text lib/HTML/Element/Library.pm > README
+
+CHANGES: lib/HTML/Element/Library/Changes.pod
+	pod2text lib/HTML/Element/Library/Changes.pod > CHANGES
+
+}; }

@@ -2,7 +2,6 @@
 use strict;
 use lib qw(t/ t/m/);
 
-
 use File::Slurp;
 use Test::More qw(no_plan);
 
@@ -10,15 +9,20 @@ use TestUtils;
 use HTML::TreeBuilder;
 use HTML::Element::Library;
 
-my $root = 't/html/iter';
+my $root = 't/html/dual_iter';
 
 my $tree = HTML::TreeBuilder->new_from_file("$root.html");
 
-my $li = $tree->look_down(id => 'store_items');
+my $dl = $tree->look_down(id => 'service_plan');
 
-my @items = qw(bread butter vodka);
 
-$tree->iter($li, @items);
+my @items = 
+  ('the pros' => 'never have to worry about service again',
+   'the cons' => 'upfront extra charge on purchase',
+   'our choice' => 'go with the extended service plan');
+
+
+$tree->iter($dl, @items);
 
   my $generated_html = ptree($tree, "$root.gen");
 

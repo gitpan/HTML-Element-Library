@@ -1,6 +1,6 @@
 package SelectData;
 
-use Set::Array;
+
 
 my @clan_data = (
   { clan_name => 'janglers',    clan_id => 12, selected => 1 },
@@ -15,7 +15,7 @@ sub new {
 }
 
 sub load_data {
-  Set::Array->new(@clan_data);
+  \@clan_data
 }
 
 

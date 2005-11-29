@@ -1,6 +1,6 @@
 # This might look like shell script, but it's actually -*- perl -*-
 use strict;
-use lib 't/';
+use lib qw(t/ t/m/);
 
 use File::Slurp;
 use Test::More qw(no_plan);
