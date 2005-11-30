@@ -22,7 +22,7 @@ our @EXPORT_OK   = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT      = qw();
 
 #our $VERSION = '0.06';
-our ($VERSION) = ('$Revision: 1.9 $' =~ m/([\.\d]+)/) ;
+our ($VERSION) = ('$Revision: 2.0 $' =~ m/([\.\d]+)/) ;
 
 # Preloaded methods go here.
 
@@ -304,10 +304,11 @@ sub HTML::Element::table2 {
       tr_data     => { default => sub { my ($self, $data) = @_;
 				      shift(@{$data}) ;
 				    }},
+      tr_base_id  => { default => undef },
       tr_proc     => { 
 	default => sub { 
-	  my ($self, $tr, $tr_data, $row_count, $root_id) = @_;
-	  $tr->attr(id => sprintf "%s_%d", $root_id, $row_count);
+	  my ($tr, $tr_data, $tr_base_id, $row_count) = @_;
+	  $tr->attr(id => sprintf "%s_%d", $tr_base_id, $row_count);
 	}},
       td_proc     => 1,
       debug => {default => 0}
@@ -342,6 +343,8 @@ sub HTML::Element::table2 {
   my $tr_parent = $proto_tr[0]->parent;
   warn "parent element of trs: " . $tr_parent->as_HTML if $p{debug};
 
+  my $row_count;
+
   my @table_rows;
 
   {
@@ -353,8 +356,11 @@ sub HTML::Element::table2 {
       my $new_tr_node = $proto_tr->next->clone;
       warn  "new_tr_node: $new_tr_node" if $p{debug};
 
-      $p{td_proc}->($new_tr_node, $row);
-      push @table_rows, $new_tr_node;
+    $p{tr_proc}->($new_tr_node, $row, $p{tr_base_id}, ++$row_count) 
+	if $p{tr_proc};
+
+    $p{td_proc}->($new_tr_node, $row);
+    push @table_rows, $new_tr_node;
 
     redo;
   }
@@ -869,6 +875,19 @@ that the C<tr_ld> is done on the table node that was found below I<instead>
 of the whole HTML tree. This makes sense. The C<tr>s that you want exist
 below the table that was just found.
 
+Defaults to C<< ['_tag' => 'tr'] >> if not passed in.
+
+=item * C<< tr_base_id => $id_name >> : optional
+
+Ok, think for a second. You've got a sample table row which is about to be
+unrolled several times. Each row needs a unique id. The value here (if 
+passed in), can be useful in abstractly forming this unique C<tr> id. 
+
+The default C<tr_proc> method will work perfectly if you pass in a
+C<tr_base_id> for it to chew on.
+
+See C<t/table2.t> in the test suite for an example of its use.
+
 =item * C<< tr_data => $code_ref >> : optional
 
 How to take the C<table_data> and return a row. Defaults to:
@@ -883,9 +902,9 @@ Something to do to the table row we are about to add to the
 table we are making. Defaults to a routine which makes the C<id>
 attribute unique:
 
- sub { 
-	my ($self, $tr, $tr_data, $row_count, $root_id) = @_;
-	$tr->attr(id => sprintf "%s_%d", $root_id, $row_count);
+ sub {
+	my ($self, $tr, $tr_data, $tr_base_id, $row_count) = @_;
+	$tr->attr(id => sprintf "%s_%d", $tr_base_id, $row_count);
  }
 
 =item * C<< td_proc => $code_ref >> : required

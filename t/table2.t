@@ -26,6 +26,7 @@ for my $dataset (keys %$d) {
   $tree->table2 (
 #    debug => 1,
     table_data => $d->{$dataset},
+    tr_base_id => $dataset,
     tr_ld => sub {
       my $t = shift;
       my $tbody = ($t->look_down('_tag' => 'tbody'))[$tbody{$dataset}];
