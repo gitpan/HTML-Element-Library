@@ -8,6 +8,7 @@ use warnings;
 our $DEBUG = 0;
 #our $DEBUG = 1;
 
+use Array::Reform qw(:all);
 use Carp qw(confess);
 use Data::Dumper;
 use HTML::Element;
@@ -21,8 +22,10 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 our @EXPORT_OK   = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT      = qw();
 
-#our $VERSION = '0.06';
-our ($VERSION) = ('$Revision: 2.0 $' =~ m/([\.\d]+)/) ;
+
+
+our $VERSION = qw($Revision: 3.1 $)[1] ;
+
 
 # Preloaded methods go here.
 
@@ -107,11 +110,11 @@ sub HTML::Element::iter {
   #  warn 'P: ' , $p->attr('id') ;
   #  warn 'H: ' , $p->as_HTML;
 
-  my $id_incr = make_counter;
+  #  my $id_incr = make_counter;
   my @item = map {
     my $new_item = clone $p;
     $new_item->replace_content($_);
-    $new_item->attr('id', $id_incr->( $p->attr('id') ));
+    #    $new_item->attr('id', $id_incr->( $p->attr('id') ));
     $new_item;
   } @data;
 
@@ -120,12 +123,97 @@ sub HTML::Element::iter {
 }
 
 
+sub HTML::Element::iter2 {
+
+  my $tree = shift;
+
+  #warn "INPUT TO TABLE2: ", Dumper \@_;
+
+  my %p = validate(
+    @_, {
+      wrapper_ld    => { default => ['_tag' => 'dl'] },
+      wrapper_data  => 1,
+      wrapper_proc  => { default => undef },
+      item_ld       => { default => sub { 
+			   my $tree = shift;
+			   [
+			     $tree->look_down('_tag' => 'dt'),
+			     $tree->look_down('_tag' => 'dd')
+			    ];
+			 }
+			},
+      item_data     => { default => sub { my ($wrapper_data) = @_;
+					  shift(@{$wrapper_data}) ;
+					}},
+      item_proc     => {
+	default => sub {
+	  my ($item_elems, $item_data, $row_count) = @_;
+	  $item_elems->[$_]->replace_content($item_data->[$_]) for (0,1) ;
+	  $item_elems;
+	}},
+      splice        => { default => sub {
+			   my ($container, @item_elems) = @_;
+			   $container->splice_content(0, 2, @item_elems);
+			 }
+			},
+      debug => {default => 0}
+     }
+   );
+
+  warn "wrapper_data: " . Dumper $p{wrapper_data} if $p{debug} ;
+
+  my $container = $tree->look_down(@{$p{wrapper_ld}});
+  warn "wrapper_(preproc): " . $container->as_HTML if $p{debug} ;
+  $p{wrapper_proc}->($container) if defined $p{wrapper_proc} ;
+  warn "wrapper_(postproc): " . $container->as_HTML if $p{debug} ;
+
+  my $_item_elems = $p{item_ld}->($container);
+  
+
+
+  my $row_count;
+  my @item_elem;
+  {
+    my $item_data  = $p{item_data}->($p{wrapper_data});
+    last unless defined $item_data;
+
+    warn Dumper("item_data", $item_data);
+
+
+    my $item_elems = [ map { $_->clone } @{$_item_elems} ] ;
+
+    if ($p{debug}) {
+      for (@{$item_elems}) {
+	warn "ITEM_ELEMS ", $_->as_HTML;
+      }
+    }
+
+    my $new_item_elems = $p{item_proc}->($item_elems, $item_data, ++$row_count);
+
+    if ($p{debug}) {
+      for (@{$new_item_elems}) {
+	warn "NEWITEM_ELEMS ", $_->as_HTML;
+      }
+    }
+
+
+    push @item_elem, @{$new_item_elems} ;
+
+    redo;
+  }
+
+  warn "pushing " . @item_elem . " elems " if $p{debug} ;
+
+  $p{splice}->($container, @item_elem);
+
+}
+
 sub HTML::Element::dual_iter {
   my ($parent, $data) = @_;
 
   my ($prototype_a, $prototype_b) = $parent->content_list;
 
-  my $id_incr = make_counter;
+  #  my $id_incr = make_counter;
 
   my $i;
 
@@ -138,12 +226,11 @@ sub HTML::Element::dual_iter {
     my ($new_a, $new_b) = map { clone $_ } ($prototype_a, $prototype_b) ;
     $new_a->splice_content(0,1, $_->[0]);
     $new_b->splice_content(0,1, $_->[1]);
-    $_->attr('id', $id_incr->($_->attr('id'))) for ($new_a, $new_b) ;
+    #$_->attr('id', $id_incr->($_->attr('id'))) for ($new_a, $new_b) ;
     ($new_a, $new_b)
   } @iterable_data;
 
-  $parent->delete_content;
-  $parent->push_content(@item);
+  $parent->splice_content(0, 2, @item);
 
 }
 
@@ -205,6 +292,109 @@ sub HTML::Element::highlander {
 
   $survivor_node;
 }
+
+
+sub HTML::Element::highlander2 {
+  my ($tree, $local_root_id, $aref, @arg) = @_;
+
+  ref $aref eq 'ARRAY' or confess 
+    "must supply array reference";
+    
+  my @aref = @$aref;
+  @aref % 2 == 0 or confess 
+    "supplied array ref must have an even number of entries";
+
+  warn __PACKAGE__ if $DEBUG;
+
+  my $survivor; my $then;
+  while (my ($id, $if_then) = splice @aref, 0, 2) {
+
+    warn $id if $DEBUG;
+    my ($if, $_then);
+
+    if (ref $if_then eq 'ARRAY') {
+      ($if, $_then) = @$if_then;
+    } else {
+      ($if, $_then) = ($if_then, sub {});
+    }
+
+    if ($if->(@arg)) {
+      $survivor = $id;
+      $then = $_then;
+      last;
+    }
+
+  }
+
+  my @id_survivor = (id => $survivor);
+  my $survivor_node = $tree->look_down(@id_survivor);
+#  warn $survivor;
+#  warn $local_root_id;
+#  warn $node;
+
+  warn "survivor: $survivor" if $DEBUG;
+  warn "tree: "  . $tree->as_HTML if $DEBUG;
+
+  $survivor_node or die "search for @id_survivor failed in tree($tree): " . $tree->as_HTML;
+
+  my $survivor_node_parent = $survivor_node->parent;
+  $survivor_node = $survivor_node->clone;
+  $survivor_node_parent->replace_content($survivor_node);
+
+  # **************** NEW FUNCTIONALITY *******************
+
+  # apply transforms on survivor node
+
+  $then->($survivor_node);
+
+  # **************** NEW FUNCTIONALITY *******************
+
+
+  warn "new tree: " . $tree->as_HTML if $DEBUG;
+
+  $survivor_node;
+}
+
+
+sub overwrite_action {
+  my ($mute_node, %X) = @_;
+
+  $mute_node->attr($X{local_attr}{name} => $X{local_attr}{value}{new});
+}
+
+
+sub HTML::Element::overwrite_attr {
+  my $tree = shift;
+  
+  $tree->mute_elem(@_, \&overwrite_action);
+}
+
+
+
+sub HTML::Element::mute_elem {
+  my ($tree, $mute_attr, $closures, $post_hook) = @_;
+
+  warn "my mute_node = $tree->look_down($mute_attr => qr/.*/) ;";
+  my @mute_node = $tree->look_down($mute_attr => qr/.*/) ;
+
+  for my $mute_node (@mute_node) {
+    my ($local_attr,$mute_key)        = split /\s+/, $mute_node->attr($mute_attr);
+    my $local_attr_value_current      = $mute_node->attr($local_attr);
+    my $local_attr_value_new          = $closures->{$mute_key}->($tree, $mute_node, $local_attr_value_current);
+    $post_hook->(
+      $mute_node,
+      tree => $tree,
+      local_attr => {
+	name => $local_attr,
+	value => {
+	  current => $local_attr_value_current,
+	  new     => $local_attr_value_new
+	 }
+       }
+     ) if ($post_hook) ;
+  }
+}
+
 
 
 sub HTML::Element::table {
@@ -294,6 +484,8 @@ sub HTML::Element::table2 {
 
   my $tree = shift;
 
+  #warn "INPUT TO TABLE2: ", Dumper \@_;
+
   my %p = validate(
     @_, {
       table_ld    => { default => ['_tag' => 'table'] },
@@ -305,11 +497,7 @@ sub HTML::Element::table2 {
 				      shift(@{$data}) ;
 				    }},
       tr_base_id  => { default => undef },
-      tr_proc     => { 
-	default => sub { 
-	  my ($tr, $tr_data, $tr_base_id, $row_count) = @_;
-	  $tr->attr(id => sprintf "%s_%d", $tr_base_id, $row_count);
-	}},
+      tr_proc     => { default => undef },
       td_proc     => 1,
       debug => {default => 0}
      }
@@ -356,8 +544,8 @@ sub HTML::Element::table2 {
       my $new_tr_node = $proto_tr->next->clone;
       warn  "new_tr_node: $new_tr_node" if $p{debug};
 
-    $p{tr_proc}->($new_tr_node, $row, $p{tr_base_id}, ++$row_count) 
-	if $p{tr_proc};
+    $p{tr_proc}->($tree, $new_tr_node, $row, $p{tr_base_id}, ++$row_count) 
+	if defined $p{tr_proc};
 
     $p{td_proc}->($new_tr_node, $row);
     push @table_rows, $new_tr_node;
@@ -484,9 +672,9 @@ One of these days, I'll around to writing a nice C<EXPORT> section.
 
 =head2 Tree Rewriting Methods
 
-=head3 $elem->replace_content($new_elem)
+=head3 $elem->replace_content(@new_elem)
 
-Replaces all of C<$elem>'s content with C<$new_elem>. 
+Replaces all of C<$elem>'s content with C<@new_elem>. 
 
 =head3 $elem->wrap_content($wrapper_element)
 
@@ -562,22 +750,123 @@ id C<under10> remains. For age less than 18, the node with id C<under18>
 remains.
 Otherwise our "else" condition fires and the child with id C<welcome> remains.
 
-=head2 Tree-Building Methods: Single ("li") Iteration
+=head3 $tree->highlander2($subtree_span_id, $conditionals, @conditionals_args)
+
+Right around the same time that C<table2()> came into being, as Seamstress
+began to tackle tougher and tougher processing problems. It became clear that 
+a more powerful highlander was needed... one that not only snipped the tree
+of the nodes that should not survive, but one that allows for 
+post-processing of the survivor node.
+
+Thus C<highlander2()>.
+
+So let's look at our HTML which requires post-selection processing:
+
+  <span id=book_status>
+    <span id=checked_out>
+      Checked out to <a id=borrower_url href="">borrower_name</a><br/>
+      <a id=return_url href="">Return it</a>
+    </span>
+    <form id=not_checked_out id=checkout_url action="" method="post">
+	  <input type="submit" value="Check out to"/>
+    </form>
+  </span>
+
+In this case, it is not enough to have the C<checked_out> or
+C<not_checked_out> branch survive. We must take either segment of HTML
+and rewrite the URLs in either. Here is how we use highlander2 to do so:
+
+  $tree->highlander2(book_status => [
+    checked_out     => [
+      sub { $stash->{item}->borrower },
+      sub { 
+	my $branch = shift; 
+	my $url = $c->uri_for('borrower/view', $borrower_id);
+	$branch->look_down(id => 'borrower_url')->replace_content($url);
+      }
+     ],
+    not_checked_out => [
+      sub { 1 },
+      sub { more_rewriting }
+     ]
+   ]);
+
+
+Each lookdown_id to
+C<highlander2()> takes an arrayref of subs (as shown above) or
+ a single sub.
+
+
+=head3 $tree->overwrite_attr($mutation_attr => $mutating_closures)
+
+This method is designed for taking a tree and reworking a set of nodes in 
+a stereotyped fashion. For instance let's say you have 3 remote image 
+archives, but you don't want to put long URLs in your img src
+tags for reasons of abstraction, re-use and brevity. So instead you do this:
+
+  <img src="/img/smiley-face.jpg" fixup="src lnc">
+  <img src="/img/hot-babe.jpg"    fixup="src playboy">
+  <img src="/img/footer.jpg"      fixup="src foobar">
+
+and then when the tree of HTML is being processed, you make this call:
+
+  my %closures = (
+     lnc     => sub { my ($tree, $mute_node, $attr_value)= @_; "http://lnc.usc.edu$attr_value" },
+     playboy => sub { my ($tree, $mute_node, $attr_value)= @_; "http://playboy.com$attr_value" }
+     foobar  => sub { my ($tree, $mute_node, $attr_value)= @_; "http://foobar.info$attr_value" }
+  )
+
+  $tree->overwrite_attr(fixup => \%closures) ;
+
+and the tags come out modified like so:
+
+  <img src="http://lnc.usc.edu/img/smiley-face.jpg" fixup="src lnc">
+  <img src="http://playboy.com/img/hot-babe.jpg"    fixup="src playboy">
+  <img src="http://foobar.info/img/footer.jpg"      fixup="src foobar">
+
+=head3 $tree->mute_elem($mutation_attr => $mutating_closures, [ $post_hook ] )
+
+This is a generalization of C<overwrite_attr>. C<overwrite_attr> 
+assumes the return value of the 
+closure is supposed overwrite an attribute value and does it for you. 
+C<mute_elem> is a more general function which does nothing but 
+hand the closure the element and let it mutate it as it jolly well pleases :)
+
+In fact, here is the implementation of C<overwrite_attr> 
+to give you a taste of how C<mute_attr> is used:
+
+ sub overwrite_action {
+   my ($mute_node, %X) = @_;
+
+   $mute_node->attr($X{local_attr}{name} => $X{local_attr}{value}{new});
+ }
+
+
+ sub HTML::Element::overwrite_attr {
+   my $tree = shift;
+  
+   $tree->mute_elem(@_, \&overwrite_action);
+ }
+
+
+
+
+=head2 Tree-Building Methods: Unrolling an array via a single sample element
 
 This is best described by example. Given this HTML:
 
  <strong>Here are the things I need from the store:</strong>
  <ul>
-   <li id="store_items">Sample item</li>
+   <li class="store_items">Sample item</li>
  </ul>
 
 We can unroll it like so:
 
-  my $li = $tree->look_down(id => 'store_items');
+  my $li = $tree->look_down(class => 'store_items');
 
   my @items = qw(bread butter vodka);
 
-  $tree->iter($li, @items);
+  $tree->iter($li => @items);
 
 To produce this:
 
@@ -586,12 +875,106 @@ To produce this:
   <head></head>
   <body>Here are the things I need from the store:
     <ul>
-      <li id="store_items:1">bread</li>
-      <li id="store_items:2">butter</li>
-      <li id="store_items:3">vodka</li>
+      <li class="store_items">bread</li>
+      <li class="store_items">butter</li>
+      <li class="store_items">vodka</li>
     </ul>
   </body>
  </html>
+
+=head2 Tree-Building Methods: Unrolling an array via n sample elements
+
+C<iter()> was fine for awhile, but some things
+(definition lists, e.g.) need a more general function to make them easy to
+do. Hence C<iter2()>. This function will be explained by example of unrolling
+a simple definition list.
+
+So here's our start HTML:
+
+ Here are the type of people you meet at XYZ, inc:
+
+    <dl>
+
+      <dt>
+	Artist
+      </dt>
+      <dd>
+	A person who draws blood.
+      </dd>
+
+      <dt>
+	Musician
+      </dt>
+      <dd>
+	A clone of Iggy Pop.
+      </dd>
+
+      <dt>
+	Poet
+      </dt>
+      <dd>
+	A relative of Edgar Allan Poe.
+      </dd>
+
+
+    </dl>
+
+And we want to unroll our data set, preserving the last two elements of the
+initial definition list (Poet and its definition). Here's how it's done:
+
+ my @items = (
+  [ Programmer => 'one who likes Perl and Seamstress', ],
+  [ DBA        => 'one who does business as', ],
+  [ Admin      => 'one who plays Tetris all day' ]
+ );
+
+ $tree->iter2(
+  # default wrapper_ld ok. 
+  # It defaults to ['_tag' => 'dl']
+  wrapper_data => \@items,
+  wrapper_proc => sub {
+    my ($container) = @_;
+
+    # only keep the last 2 dts and dds
+    my @content_list = $container->content_list;
+    $container->splice_content(0, @content_list - 2); 
+  },
+
+  # default item_ld is fine. It looks like this:
+  # sub { 
+  #			   my $tree = shift;
+  #			   [
+  #			     $tree->look_down('_tag' => 'dt'),
+  #			     $tree->look_down('_tag' => 'dd')
+  #			    ];
+  #			 }
+
+  # default item_data is fine. It looks like this:
+  # sub { my ($wrapper_data) = @_;
+  #	  shift(@{$wrapper_data}) ;
+  # }},
+
+  # default item_proc is fine. 
+  # Note that this subroutine MUST return the new items. This is done
+  # So that more items than were passed in can be returned. This is 
+  # useful when, for example, you must return 2 dts for an input data item. 
+  # And when would you do this? When a single term has multiple spellings
+  # for instance.
+  # The default item_proc looks like this:
+  # sub {
+  #	  my ($item_elems, $item_data, $row_count) = @_;
+  #	  $item_elems->[$_]->replace_content($item_data->[$_]) for (0,1) ;
+  #	  $item_elems;
+  #	}},
+
+  splice       => sub {
+    my ($container, @item_elems) = @_;
+    $container->unshift_content(@item_elems);
+  },
+
+  debug => 1,
+ );
+
 
 =head2 Tree-Building Methods: Select Unrolling
 
@@ -623,7 +1006,8 @@ Here's an example:
 
 Matthew Sisk has a much more intuitive (imperative)
 way to generate tables via his module
-L<HTML::ElementTable>. However, for those with callback fever, the following
+L<HTML::ElementTable|HTML::ElementTable>. 
+However, for those with callback fever, the following
 method is available. First, we look at a nuts and bolts way to build a table
 using only standard L<HTML::Tree> API calls. Then the C<table> method 
 available here is discussed.
@@ -911,6 +1295,16 @@ attribute unique:
 
 This coderef will take the row of data and operate on the C<td> cells that
 are children of the C<tr>. See C<t/table2.t> for several usage examples.
+
+Here's a sample one:
+
+ sub {
+      my ($tr, $data) = @_;
+      my @td = $tr->look_down('_tag' => 'td');
+      for my $i (0..$#td) {
+	$td[$i]->splice_content(0, 1, $data->[$i]);
+      }
+    }
 
 =cut
 

@@ -7,6 +7,7 @@ WriteMakefile(
     VERSION_FROM      => 'lib/HTML/Element/Library.pm', # finds $VERSION
     PREREQ_PM         => 
 	      {
+		Array::Reform => 1.04,
 	       File::Slurp => 9999.06,
 	       HTML::PrettyPrinter => 0.03,
 	       HTML::Tree => 3.18,

@@ -1,14 +1,14 @@
 <html>
   <head></head>
   <body>
-    <dl id="service_plan:1" klass="dual_iter">the pros</dl>
-    <dl id="service_plan:2" klass="dual_iter">never have to worry about service
+    <dl id="service_plan" class="dual_iter">the pros</dl>
+    <dl id="service_plan" class="dual_iter">never have to worry about service
       again</dl>
-    <dl id="service_plan:3" klass="dual_iter">the cons</dl>
-    <dl id="service_plan:4" klass="dual_iter">upfront extra charge on
+    <dl id="service_plan" class="dual_iter">the cons</dl>
+    <dl id="service_plan" class="dual_iter">upfront extra charge on
       purchase</dl>
-    <dl id="service_plan:5" klass="dual_iter">our choice</dl>
-    <dl id="service_plan:6" klass="dual_iter">go with the extended service
+    <dl id="service_plan" class="dual_iter">our choice</dl>
+    <dl id="service_plan" class="dual_iter">go with the extended service
       plan</dl>
   </body>
 </html>

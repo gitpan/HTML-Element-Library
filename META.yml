@@ -1,10 +1,11 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         HTML-Element-Library
-version:      2.0
+version:      3.1
 version_from: lib/HTML/Element/Library.pm
 installdirs:  site
 requires:
+    Array::Reform:                 1.04
     File::Slurp:                   9999.06
     HTML::PrettyPrinter:           0.03
     HTML::Tree:                    3.18

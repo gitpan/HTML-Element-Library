@@ -14,7 +14,7 @@ my $root = 't/html/iter';
 
 my $tree = HTML::TreeBuilder->new_from_file("$root.html");
 
-my $li = $tree->look_down(id => 'store_items');
+my $li = $tree->look_down(class => 'store_items');
 
 my @items = qw(bread butter vodka);
 

@@ -1,3 +1,7 @@
+2006-01-21  metaperl  <metaperl@gmail.com>
+
+	* created iter2() and test case
+
 Revision history for Perl extension HTML::Element::Library.
 
 0.01  Sat Dec 25 18:36:02 2004
