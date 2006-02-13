@@ -5,16 +5,21 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME              => 'HTML::Element::Library',
     VERSION_FROM      => 'lib/HTML/Element/Library.pm', # finds $VERSION
-    PREREQ_PM         => 
-	      {
-		Array::Reform => 1.04,
-	       File::Slurp => 9999.06,
-	       HTML::PrettyPrinter => 0.03,
-	       HTML::Tree => 3.18,
-	       List::Rotation::Cycle => 1.003,
-	       List::MoreUtils => 0.09,
-	       Scalar::Listify => 0.02,
-	      }, # e.g., Module::Name => 1.1
+    PREREQ_PM         => {
+      Array::Reform         => 1.04,
+
+      File::Slurp           => 9999.06,
+
+      HTML::PrettyPrinter   => 0.03,
+      HTML::Tree            => 3.19,
+
+      List::Rotation::Cycle => 1.003,
+      List::MoreUtils       => 0.09,
+
+      Params::Validate      => 0.80,
+
+      Scalar::Listify       => 0.02,
+    }, 
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/HTML/Element/Library.pm', # retrieve abstract from module
        AUTHOR         => 'Terrence Brannon <terry@hcoop.net>') : ()),

@@ -2,6 +2,7 @@
 use strict;
 use lib qw(t/ t/m/);
 
+
 use File::Slurp;
 use Test::More qw(no_plan);
 
@@ -9,26 +10,19 @@ use TestUtils;
 use HTML::TreeBuilder;
 use HTML::Element::Library;
 
-# this is a simpler call to iter2()
-
-my $root = 't/html/dual_iter';
+my $root = 't/html/iter2';
 
 my $tree = HTML::TreeBuilder->new_from_file("$root.html");
 
-my $dl = $tree->look_down(id => 'service_plan');
-
-
 my @items = (
-  ['the pros' => 'never have to worry about service again'],
-  ['the cons' => 'upfront extra charge on purchase'],
-  ['our choice' => 'go with the extended service plan']
+  [    Programmer => 'one who likes Perl and Seamstress', ],
+  [ DBA        => 'one who does business as', ],
+  [ Admin      => 'one who plays Tetris all day' ]
  );
 
-
 $tree->iter2(
-
+  # default wrapper_ld ok
   wrapper_data => \@items,
-
   wrapper_proc => sub {
     my ($container) = @_;
 
@@ -36,16 +30,17 @@ $tree->iter2(
     my @content_list = $container->content_list;
     $container->splice_content(0, @content_list - 2); 
   },
-
-
+  # default item_ld is k00l
+  # default item_data is phrEsh
+  # default item_proc will do w0rk
   splice       => sub {
     my ($container, @item_elems) = @_;
     $container->unshift_content(@item_elems);
   },
 
-  debug        => 1,
-
+  debug => 1,
  );
+  
 
   my $generated_html = ptree($tree, "$root.gen");
 

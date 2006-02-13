@@ -1,0 +1,5 @@
+CHANGES
+  1.9
+    Added the "table2" method to make creating HTML tables easier. Based on
+    2 years of using the original "table" method
+

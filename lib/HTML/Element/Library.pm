@@ -24,7 +24,7 @@ our @EXPORT      = qw();
 
 
 
-our $VERSION = qw($Revision: 3.1 $)[1] ;
+our $VERSION = '3.50';
 
 
 # Preloaded methods go here.
@@ -162,7 +162,7 @@ sub HTML::Element::iter2 {
 
   warn "wrapper_data: " . Dumper $p{wrapper_data} if $p{debug} ;
 
-  my $container = $tree->look_down(@{$p{wrapper_ld}});
+  my $container = ref_or_ld($tree, $p{wrapper_ld});
   warn "wrapper_(preproc): " . $container->as_HTML if $p{debug} ;
   $p{wrapper_proc}->($container) if defined $p{wrapper_proc} ;
   warn "wrapper_(postproc): " . $container->as_HTML if $p{debug} ;
@@ -295,21 +295,30 @@ sub HTML::Element::highlander {
 
 
 sub HTML::Element::highlander2 {
-  my ($tree, $local_root_id, $aref, @arg) = @_;
+  my $tree = shift;
 
-  ref $aref eq 'ARRAY' or confess 
-    "must supply array reference";
-    
-  my @aref = @$aref;
-  @aref % 2 == 0 or confess 
+  my %p = validate(@_, {
+    cond => { type => ARRAYREF },
+    cond_arg => { type => ARRAYREF,
+		  default => []
+		 },
+    debug => { default => 0 }
+   }
+		  );
+
+
+  my @cond = @{$p{cond}};
+  @cond % 2 == 0 or confess 
     "supplied array ref must have an even number of entries";
 
-  warn __PACKAGE__ if $DEBUG;
+  warn __PACKAGE__ if $p{debug};
+
+  my @cond_arg = @{$p{cond_arg}};
 
   my $survivor; my $then;
-  while (my ($id, $if_then) = splice @aref, 0, 2) {
+  while (my ($id, $if_then) = splice @cond, 0, 2) {
 
-    warn $id if $DEBUG;
+    warn $id if $p{debug};
     my ($if, $_then);
 
     if (ref $if_then eq 'ARRAY') {
@@ -318,7 +327,7 @@ sub HTML::Element::highlander2 {
       ($if, $_then) = ($if_then, sub {});
     }
 
-    if ($if->(@arg)) {
+    if ($if->(@cond_arg)) {
       $survivor = $id;
       $then = $_then;
       last;
@@ -326,31 +335,38 @@ sub HTML::Element::highlander2 {
 
   }
 
-  my @id_survivor = (id => $survivor);
-  my $survivor_node = $tree->look_down(@id_survivor);
-#  warn $survivor;
-#  warn $local_root_id;
-#  warn $node;
+  my @ld = (ref $survivor eq 'ARRAY')
+      ? @$survivor
+	  : (id => $survivor)
+	      ;
 
-  warn "survivor: $survivor" if $DEBUG;
-  warn "tree: "  . $tree->as_HTML if $DEBUG;
+  warn "survivor:    ", $survivor if $p{debug};
+  warn "survivor_ld: ", Dumper \@ld if $p{debug};
 
-  $survivor_node or die "search for @id_survivor failed in tree($tree): " . $tree->as_HTML;
+
+  my $survivor_node = $tree->look_down(@ld);
+
+  $survivor_node or confess
+      "search for @ld failed in tree($tree): " . $tree->as_HTML;
 
   my $survivor_node_parent = $survivor_node->parent;
   $survivor_node = $survivor_node->clone;
   $survivor_node_parent->replace_content($survivor_node);
 
+
   # **************** NEW FUNCTIONALITY *******************
 
   # apply transforms on survivor node
 
-  $then->($survivor_node);
+
+  warn "SURV::pre_trans "  . $survivor_node->as_HTML if $p{debug};
+  $then->($survivor_node, @cond_arg);
+  warn "SURV::post_trans "  . $survivor_node->as_HTML if $p{debug};
 
   # **************** NEW FUNCTIONALITY *******************
 
 
-  warn "new tree: " . $tree->as_HTML if $DEBUG;
+
 
   $survivor_node;
 }
@@ -484,7 +500,7 @@ sub HTML::Element::table2 {
 
   my $tree = shift;
 
-  #warn "INPUT TO TABLE2: ", Dumper \@_;
+
 
   my %p = validate(
     @_, {
@@ -497,11 +513,13 @@ sub HTML::Element::table2 {
 				      shift(@{$data}) ;
 				    }},
       tr_base_id  => { default => undef },
-      tr_proc     => { default => undef },
+      tr_proc     => { default => sub {} },
       td_proc     => 1,
       debug => {default => 0}
      }
    );
+
+  warn "INPUT TO TABLE2: ", Dumper \@_ if $p{debug};
 
   warn "table_data: " . Dumper $p{table_data} if $p{debug} ;
 
@@ -512,7 +530,9 @@ sub HTML::Element::table2 {
   #  ++$DEBUG if $table{debug} ;
 
   # Get the table element
+  warn 1;
   $table->{table_node} = ref_or_ld( $tree, $p{table_ld} ) ;
+  warn 2;
   $table->{table_node} or confess
     "table tag not found via " . Dumper($p{table_ld}) ;
 
@@ -523,6 +543,9 @@ sub HTML::Element::table2 {
   my @proto_tr = ref_or_ld( $table->{table_node},  $p{tr_ld} ) ;
 
   warn "found " . @proto_tr . " iter nodes " if $p{debug};
+
+  @proto_tr or return ;
+
   if ($p{debug}) {
     warn $_->as_HTML for @proto_tr;
   }
@@ -536,19 +559,24 @@ sub HTML::Element::table2 {
   my @table_rows;
 
   {
-    my $row = $p{tr_data}->($table, $p{table_data});
+    my $row = $p{tr_data}->($table, $p{table_data}, $row_count);
     warn  "data row: " . Dumper $row if $p{debug};
     last unless defined $row;
 
-      # wont work:      my $new_iter_node = $table->{iter_node}->clone;
-      my $new_tr_node = $proto_tr->next->clone;
-      warn  "new_tr_node: $new_tr_node" if $p{debug};
+    # wont work:      my $new_iter_node = $table->{iter_node}->clone;
+    my $new_tr_node = $proto_tr->next->clone;
+    warn  "new_tr_node: $new_tr_node" if $p{debug};
 
-    $p{tr_proc}->($tree, $new_tr_node, $row, $p{tr_base_id}, ++$row_count) 
+    $p{tr_proc}->($tree, $new_tr_node, $row, $p{tr_base_id}, ++$row_count)
 	if defined $p{tr_proc};
+
+    warn  "data row redux: " . Dumper $row if $p{debug};
+    warn 3.3;
 
     $p{td_proc}->($new_tr_node, $row);
     push @table_rows, $new_tr_node;
+
+    warn 4.4;
 
     redo;
   }
@@ -750,51 +778,92 @@ id C<under10> remains. For age less than 18, the node with id C<under18>
 remains.
 Otherwise our "else" condition fires and the child with id C<welcome> remains.
 
-=head3 $tree->highlander2($subtree_span_id, $conditionals, @conditionals_args)
+=head3 $tree->highlander2($tree, $conditionals, @conditionals_args)
 
-Right around the same time that C<table2()> came into being, as Seamstress
+Right around the same time that C<table2()> came into being, Seamstress
 began to tackle tougher and tougher processing problems. It became clear that 
 a more powerful highlander was needed... one that not only snipped the tree
 of the nodes that should not survive, but one that allows for 
-post-processing of the survivor node.
+post-processing of the survivor node. And one that was more flexible with 
+how to find the nodes to snip.
 
-Thus C<highlander2()>.
+Thus (drum roll) C<highlander2()>.
 
 So let's look at our HTML which requires post-selection processing:
 
-  <span id=book_status>
-    <span id=checked_out>
-      Checked out to <a id=borrower_url href="">borrower_name</a><br/>
-      <a id=return_url href="">Return it</a>
+ <span klass="highlander" id="age_dialog">
+    <span id="under10">
+       Hello, little <span id=age>AGE</span>-year old,
+    does your mother know you're using her AOL account?
     </span>
-    <form id=not_checked_out id=checkout_url action="" method="post">
-	  <input type="submit" value="Check out to"/>
-    </form>
-  </span>
+    <span id="under18">
+       Sorry, you're only <span id=age>AGE</span>
+       (and too dumb to lie about your age)
+    </span>
+    <span id="welcome">
+       Welcome, isn't it good to be <span id=age>AGE</span> years old?
+    </span>
+</span>
 
-In this case, it is not enough to have the C<checked_out> or
-C<not_checked_out> branch survive. We must take either segment of HTML
-and rewrite the URLs in either. Here is how we use highlander2 to do so:
+In this case, a branch survives, but it has dummy data in it. We must take 
+the surviving segment of HTML and rewrite the age C<span> with the age. 
+Here is how we use C<highlander2()> to do so:
 
-  $tree->highlander2(book_status => [
-    checked_out     => [
-      sub { $stash->{item}->borrower },
-      sub { 
-	my $branch = shift; 
-	my $url = $c->uri_for('borrower/view', $borrower_id);
-	$branch->look_down(id => 'borrower_url')->replace_content($url);
-      }
+ sub replace_age { 
+  my $branch = shift;
+  my $age = shift;
+  $branch->look_down(id => 'age')->replace_content($age);
+ }
+
+ my $if_then = $tree->look_down(id => 'age_dialog');
+
+  $if_then->highlander2(
+    cond => [
+      under10 => [
+	sub { $_[0] < 10} , 
+	\&replace_age
+       ],
+      under18 => [
+	sub { $_[0] < 18} ,
+	\&replace_age
+       ],
+      welcome => [
+	sub { 1 },
+	\&replace_age
+       ]
      ],
-    not_checked_out => [
-      sub { 1 },
-      sub { more_rewriting }
-     ]
-   ]);
+    cond_arg => [ $age ]
+		       );
+
+We pass it the tree (C<$if_then>), an arrayref of conditions
+(C<cond>) and an arrayref of arguments which are passed to the
+C<cond>s and to the replacement subs.
+
+The C<under10>, C<under18> and C<welcome> are id attributes in the
+tree of the siblings of which only one will survive. However, 
+should you need to do
+more complex look-downs to find the survivor, 
+then supply an array ref instead of a simple
+scalar:
 
 
-Each lookdown_id to
-C<highlander2()> takes an arrayref of subs (as shown above) or
- a single sub.
+  $if_then->highlander2(
+    cond => [
+      [class => 'r12'] => [
+	sub { $_[0] < 10} , 
+	\&replace_age
+       ],
+      [class => 'z22'] => [
+	sub { $_[0] < 18} ,
+	\&replace_age
+       ],
+      [class => 'w88'] => [
+	sub { 1 },
+	\&replace_age
+       ]
+     ],
+    cond_arg => [ $age ]
+		       );
 
 
 =head3 $tree->overwrite_attr($mutation_attr => $mutating_closures)
@@ -885,16 +954,13 @@ To produce this:
 =head2 Tree-Building Methods: Unrolling an array via n sample elements
 
 C<iter()> was fine for awhile, but some things
-(definition lists, e.g.) need a more general function to make them easy to
+(e.g. definition lists) need a more general function to make them easy to
 do. Hence C<iter2()>. This function will be explained by example of unrolling
 a simple definition list.
 
-So here's our start HTML:
+So here's our mock-up HTML from the designer:
 
- Here are the type of people you meet at XYZ, inc:
-
-    <dl>
-
+ <dl class="dual_iter" id="service_plan">
       <dt>
 	Artist
       </dt>
@@ -916,21 +982,112 @@ So here's our start HTML:
 	A relative of Edgar Allan Poe.
       </dd>
 
+      <dt class="adstyle">sample header</dt>
+      <dd class="adstyle2">sample data</dd>
 
-    </dl>
+ </dl>
 
-And we want to unroll our data set, preserving the last two elements of the
-initial definition list (Poet and its definition). Here's how it's done:
+
+And we want to unroll our data set:
 
  my @items = (
-  [ Programmer => 'one who likes Perl and Seamstress', ],
-  [ DBA        => 'one who does business as', ],
-  [ Admin      => 'one who plays Tetris all day' ]
+  ['the pros'   => 'never have to worry about service again'],
+  ['the cons'   => 'upfront extra charge on purchase'],
+  ['our choice' => 'go with the extended service plan']
  );
+
+
+Now, let's make this problem a bit harder to show off the power of C<iter2()>.
+Let's assume that we want only the last <dt> and it's accompanying <dd> 
+(the one with "sample data") to be used as the sample data
+for unrolling with our data set. Let's further assume that we want them to 
+remain in the final output. 
+
+So now, the API to C<iter2()> will be discussed and we will explain how our 
+goal of getting our data into HTML fits into the API.
+
+=over 4
+
+=item * wrapper_ld
+
+This is how to look down and find the container of all the elements we will
+be unrolling. The <dl> tag is the container for the dt and dd tags we will be
+unrolling.
+
+If you pass an anonymous subroutine, then it is presumed that execution of
+this subroutine will return the HTML::Element representing the container tag.
+If you pass an array ref, then this will be dereferenced and passed to 
+C<HTML::Element::look_down()>. 
+
+default value: C<< ['_tag' => 'dl'] >>
+
+Based on the mock HTML above, this default is fine for finding our container
+tag. So let's move on.
+
+=item * wrapper_data
+
+This is an array reference of data that we will be putting into the container.
+You must supply this. C<@items> above is our C<wrapper_data>.
+
+=item * wrapper_proc
+
+After we find the container via C<wrapper_ld>, we may want to pre-process
+some aspect of this tree. In our case the first two sets of dt and dd need 
+to be removed, leaving the last dt and dd. So, we supply a C<wrapper_proc>
+which will do this.
+
+default: undef
+
+=item * item_ld
+
+This anonymous subroutine returns an array ref of C<HTML::Element>s that will
+be cloned and populated with item data 
+(item data is a "row" of C<wrapper_data>).
+
+default: returns an arrayref consisting of the dt and dd element inside the
+container.
+
+=item * item_data
+
+This is a subroutine that takes C<wrapper_data> and retrieves one "row" 
+to be "pasted" into the array ref of C<HTML::Element>s found via C<item_ld>.
+I hope that makes sense.
+
+default: shifts C<wrapper_data>.
+
+=item * item_proc
+
+This is a subroutine that takes the C<item_data> and the C<HTML::Element>s
+found via C<item_ld> and produces an arrayref of C<HTML::Element>s which will
+eventually be spliced into the container.
+
+Note that this subroutine MUST return the new items. This is done
+So that more items than were passed in can be returned. This is 
+useful when, for example, you must return 2 dts for an input data item. 
+And when would you do this? When a single term has multiple spellings
+for instance.
+
+default: expects C<item_data> to be an arrayref of two elements and 
+C<item_elems> to be an arrayref of two C<HTML::Element>s. It replaces the
+content of the C<HTML::Element>s with the C<item_data>.
+
+=item * splice
+
+After building up an array of C<@item_elems>, the subroutine passed as
+C<splice> will be given the parent container HTML::Element and the 
+C<@item_elems>. How the C<@item_elems> end up in the container is up to this
+routine: it could put half of them in. It could unshift them or whatever.
+
+default: C<< $container->splice_content(0, 2, @item_elems) >>
+In other words, kill the 2 sample elements with the newly generated
+@item_elems
+
+=back
+
+So now that we have documented the API, let's see the call we need:
 
  $tree->iter2(
   # default wrapper_ld ok. 
-  # It defaults to ['_tag' => 'dl']
   wrapper_data => \@items,
   wrapper_proc => sub {
     my ($container) = @_;
@@ -940,38 +1097,13 @@ initial definition list (Poet and its definition). Here's how it's done:
     $container->splice_content(0, @content_list - 2); 
   },
 
-  # default item_ld is fine. It looks like this:
-  # sub { 
-  #			   my $tree = shift;
-  #			   [
-  #			     $tree->look_down('_tag' => 'dt'),
-  #			     $tree->look_down('_tag' => 'dd')
-  #			    ];
-  #			 }
-
-  # default item_data is fine. It looks like this:
-  # sub { my ($wrapper_data) = @_;
-  #	  shift(@{$wrapper_data}) ;
-  # }},
-
+  # default item_ld is fine.
+  # default item_data is fine.
   # default item_proc is fine. 
-  # Note that this subroutine MUST return the new items. This is done
-  # So that more items than were passed in can be returned. This is 
-  # useful when, for example, you must return 2 dts for an input data item. 
-  # And when would you do this? When a single term has multiple spellings
-  # for instance.
-  # The default item_proc looks like this:
-  # sub {
-  #	  my ($item_elems, $item_data, $row_count) = @_;
-  #	  $item_elems->[$_]->replace_content($item_data->[$_]) for (0,1) ;
-  #	  $item_elems;
-  #	}},
-
   splice       => sub {
     my ($container, @item_elems) = @_;
     $container->unshift_content(@item_elems);
   },
-
   debug => 1,
  );
 
@@ -1255,22 +1387,11 @@ created because there is a C<tr_proc> and C<td_proc>.
 =item * C<< tr_ld => $look_down >> : optional
 
 Same as C<table_ld> but for finding the table row elements. Please note
-that the C<tr_ld> is done on the table node that was found below I<instead>
+that the C<tr_ld> is done on the table node that was found I<instead>
 of the whole HTML tree. This makes sense. The C<tr>s that you want exist
 below the table that was just found.
 
 Defaults to C<< ['_tag' => 'tr'] >> if not passed in.
-
-=item * C<< tr_base_id => $id_name >> : optional
-
-Ok, think for a second. You've got a sample table row which is about to be
-unrolled several times. Each row needs a unique id. The value here (if 
-passed in), can be useful in abstractly forming this unique C<tr> id. 
-
-The default C<tr_proc> method will work perfectly if you pass in a
-C<tr_base_id> for it to chew on.
-
-See C<t/table2.t> in the test suite for an example of its use.
 
 =item * C<< tr_data => $code_ref >> : optional
 
@@ -1433,10 +1554,58 @@ An L<HTML::Tree> - based module inspired by
 XMLC (L<http://xmlc.enhydra.org>), allowing for dynamic
 HTML generation via tree rewriting.
 
+=head1 TODO
+
+=over
+
+=item * highlander2
+
+currently the API expects the subtrees to survive or be pruned to be
+identified by id:
+
+  $if_then->highlander2([
+    under10 => sub { $_[0] < 10} , 
+    under18 => sub { $_[0] < 18} ,
+    welcome => [
+      sub { 1 },
+      sub { 
+	my $branch = shift;
+	$branch->look_down(id => 'age')->replace_content($age);
+      }
+     ]
+   ],
+			$age
+		       );
+
+but, it should be more flexible. the C<under10>, and C<under18> are
+expected to be ids in the tree... but it is not hard to have a check to
+see if this field is an array reference and if it, then to do a look
+down instead:
+
+  $if_then->highlander2([
+    [class => 'under10'] => sub { $_[0] < 10} , 
+    [class => 'under18'] => sub { $_[0] < 18} ,
+    [class => 'welcome'] => [
+      sub { 1 },
+      sub { 
+	my $branch = shift;
+	$branch->look_down(id => 'age')->replace_content($age);
+      }
+     ]
+   ],
+			$age
+		       );
+
+
+
+=cut
+
 
 =head1 AUTHOR
 
 Terrence Brannon, E<lt>tbone@cpan.orgE<gt>
+
+Many thanks to BARBIE for his RT bug report.
 
 =head1 COPYRIGHT AND LICENSE
 
