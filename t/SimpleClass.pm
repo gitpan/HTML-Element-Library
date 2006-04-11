@@ -1,6 +1,5 @@
 package SimpleClass;
 
-use Set::Array;
 
 my @name   = qw(bob bill brian babette bobo bix);
 my @age    = qw(99  12   44    52      12   43);

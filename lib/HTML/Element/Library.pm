@@ -8,7 +8,7 @@ use warnings;
 our $DEBUG = 0;
 #our $DEBUG = 1;
 
-use Array::Reform qw(:all);
+use Array::Group qw(:all);
 use Carp qw(confess);
 use Data::Dumper;
 use HTML::Element;
@@ -24,7 +24,7 @@ our @EXPORT      = qw();
 
 
 
-our $VERSION = '3.50';
+our $VERSION = '3.51';
 
 
 # Preloaded methods go here.
@@ -220,7 +220,7 @@ sub HTML::Element::dual_iter {
   @$data %2 == 0 or 
     confess 'dataset does not contain an even number of members';
 
-  my @iterable_data = reform (2, @$data);
+  my @iterable_data = ngroup 2 => @$data;
 
   my @item = map {
     my ($new_a, $new_b) = map { clone $_ } ($prototype_a, $prototype_b) ;
@@ -920,7 +920,7 @@ to give you a taste of how C<mute_attr> is used:
 
 
 
-=head2 Tree-Building Methods: Unrolling an array via a single sample element
+=head2 Tree-Building Methods: Unrolling an array via a single sample element (<ul> container)
 
 This is best described by example. Given this HTML:
 
@@ -951,7 +951,7 @@ To produce this:
   </body>
  </html>
 
-=head2 Tree-Building Methods: Unrolling an array via n sample elements
+=head2 Tree-Building Methods: Unrolling an array via n sample elements (<dl> container)
 
 C<iter()> was fine for awhile, but some things
 (e.g. definition lists) need a more general function to make them easy to
@@ -1600,6 +1600,9 @@ down instead:
 
 =cut
 
+=head1 SEE ALSO
+
+L<HTML::Seamstress>
 
 =head1 AUTHOR
 

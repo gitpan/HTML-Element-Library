@@ -12,7 +12,8 @@ sub req_ver {
 
 my @module = 
   qw(
-     Array::Reform File::Slurp
+     Array::Group 
+     File::Slurp
 
      HTML::PrettyPrinter 
      HTML::Tree 
