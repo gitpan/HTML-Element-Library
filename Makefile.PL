@@ -8,6 +8,7 @@ WriteMakefile(
     PREREQ_PM         => {
       Array::Group          => 1.00,
 
+			  Moose => 0,
       File::Slurp           => 9999.06,
 
       HTML::PrettyPrinter   => 0.03,

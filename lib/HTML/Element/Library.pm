@@ -12,6 +12,7 @@ use Array::Group qw(:all);
 use Carp qw(confess);
 use Data::Dumper;
 use HTML::Element;
+use List::Util qw(first);
 use List::MoreUtils qw/:all/;
 use Params::Validate qw(:all);
 use Scalar::Listify;
@@ -24,16 +25,120 @@ our @EXPORT      = qw();
 
 
 
-our $VERSION = '3.51';
+our $VERSION = '3.53';
+
 
 
 # Preloaded methods go here.
+
+# https://rt.cpan.org/Ticket/Display.html?id=44105
+sub HTML::Element::fillinform {
+
+    my ($tree, $hashref, $return_tree)=@_;
+
+    (ref $hashref) eq 'HASH' or die 'hashref not supplied as argument' ;
+
+    use HTML::FillInForm;
+    my $html = $tree->as_HTML;
+    my $new_html = HTML::FillInForm->fill(\$html, $hashref);
+
+    if ($return_tree) {
+	HTML::TreeBuilder->new_from_content($new_html);
+    } else {
+	$new_html;
+    }
+
+}
 
 sub HTML::Element::siblings {
   my $element = shift;
   my $p = $element->parent;
   return () unless $p;
   $p->content_list;
+}
+
+sub HTML::Element::defmap {
+    my($tree,$attr,$hashref,$debug)=@_;
+
+    while (my ($k, $v) = (each %$hashref)) {
+	warn "defmap looks for ($attr => $k)" if $debug;
+	my $found = $tree->look_down($attr => $k);
+	if ($found) {
+	    warn "($attr => $k) was found.. replacing with '$v'" if $debug;
+	    $found->replace_content( $v );
+	}
+    }
+
+}
+
+
+sub HTML::Element::hash_map {
+    my $container = shift;
+
+    my %p = validate(@_, {
+			  hash => { type => HASHREF },
+			  to_attr => 1,
+			  excluding => { type => ARRAYREF , default => [] },
+			  debug => { default => 0 },
+			 });
+
+    warn 'The container tag is ', $container->tag if $p{debug} ;
+    warn 'hash' . Dumper($p{hash}) if $p{debug} ;
+    #warn 'at_under' . Dumper(\@_) if $p{debug} ;
+
+    my @same_as = $container->look_down( $p{to_attr} => qr/.+/ ) ;
+
+    warn 'Found ' . scalar(@same_as) . ' nodes' if $p{debug} ;
+
+
+    for my $same_as (@same_as) {
+	my $attr_val = $same_as->attr($p{to_attr}) ;
+	if (first { $attr_val eq $_ } @{$p{excluding}}) {
+	    warn "excluding $attr_val" if $p{debug} ;
+	    next;
+	}
+	warn "processing $attr_val" if $p{debug} ;
+	$same_as->replace_content( $p{hash}->{$attr_val} ) ;
+    }
+
+}
+
+sub HTML::Element::hashmap {
+    my ($container, $attr_name, $hashref, $excluding, $debug) = @_;
+
+    $excluding ||= [] ;
+
+    $container->hash_map(hash => $hashref, 
+                          to_attr => $attr_name,
+                          excluding => $excluding,
+                          debug => $debug);
+
+}
+
+
+sub HTML::Element::passover {
+  my ($tree, @to_preserve) = @_;
+  
+  warn "ARGS:   my ($tree, @to_preserve)" if $DEBUG;
+  warn $tree->as_HTML(undef, ' ') if $DEBUG;
+
+  my $exodus = $tree->look_down(id => $to_preserve[0]);
+
+  warn "E: $exodus" if $DEBUG;
+
+  my @s = HTML::Element::siblings($exodus);
+
+  for my $s (@s) {
+    next unless ref $s;
+    if (first { $s->attr('id') eq $_ } @to_preserve) {
+      ;
+    } else {
+      $s->delete;
+    }
+  }
+
+  return $exodus; # Goodbye Egypt! http://en.wikipedia.org/wiki/Passover
+
 }
 
 sub HTML::Element::sibdex {
@@ -89,10 +194,17 @@ sub HTML::Element::position {
 
 
 sub HTML::Element::content_handler {
-  my ($tree, $id_name, $content) = @_;
+  my ($tree, %content_hash) = @_;
 
-  $tree->set_child_content(id => $id_name, $content);
+  for my $k (keys %content_hash) {
+      $tree->set_child_content(id => $k, $content_hash{$k});      
+  }
 
+
+}
+
+sub HTML::Element::assign {
+    goto &HTML::Element::content_handler;
 }
 
 
@@ -114,7 +226,6 @@ sub HTML::Element::iter {
   my @item = map {
     my $new_item = clone $p;
     $new_item->replace_content($_);
-    #    $new_item->attr('id', $id_incr->( $p->attr('id') ));
     $new_item;
   } @data;
 
@@ -163,6 +274,7 @@ sub HTML::Element::iter2 {
   warn "wrapper_data: " . Dumper $p{wrapper_data} if $p{debug} ;
 
   my $container = ref_or_ld($tree, $p{wrapper_ld});
+  warn "container: " . $container if $p{debug} ;
   warn "wrapper_(preproc): " . $container->as_HTML if $p{debug} ;
   $p{wrapper_proc}->($container) if defined $p{wrapper_proc} ;
   warn "wrapper_(postproc): " . $container->as_HTML if $p{debug} ;
@@ -530,9 +642,9 @@ sub HTML::Element::table2 {
   #  ++$DEBUG if $table{debug} ;
 
   # Get the table element
-  warn 1;
+  #warn 1;
   $table->{table_node} = ref_or_ld( $tree, $p{table_ld} ) ;
-  warn 2;
+  #warn 2;
   $table->{table_node} or confess
     "table tag not found via " . Dumper($p{table_ld}) ;
 
@@ -571,12 +683,12 @@ sub HTML::Element::table2 {
 	if defined $p{tr_proc};
 
     warn  "data row redux: " . Dumper $row if $p{debug};
-    warn 3.3;
+    #warn 3.3;
 
     $p{td_proc}->($new_tr_node, $row);
     push @table_rows, $new_tr_node;
 
-    warn 4.4;
+    #warn 4.4;
 
     redo;
   }
@@ -594,24 +706,33 @@ sub HTML::Element::unroll_select {
 
   my $select = {};
 
+  warn "Select Hash: " . Dumper(\%select) if $select{debug};
+
   my $select_node = $s->look_down(id => $select{select_label});
+  warn "Select Node: " . $select_node if $select{debug};
 
-  my $option = $select_node->look_down('_tag' => 'option');
+  unless ($select{append}) {
+      for my $option ($select_node->look_down('_tag' => 'option')) {
+	  $option->delete;
+      }
+  }
 
-#  warn $option;
 
+  my $option = HTML::Element->new('option');
+  warn "Option Node: " . $option if $select{debug};
 
   $option->detach;
 
   while (my $row = $select{data_iter}->($select{data}))
     {
-#      warn Dumper($row);
-      my $o = $option->clone;
-      $o->attr('value', $select{option_value}->($row));
-      $o->attr('SELECTED', 1) if ($select{option_selected}->($row)) ;
+	warn "Data Row:" . Dumper($row) if $select{debug};
+	my $o = $option->clone;
+	$o->attr('value', $select{option_value}->($row));
+	$o->attr('SELECTED', 1) if (exists $select{option_selected} and $select{option_selected}->($row)) ;
 
-      $o->replace_content($select{option_content}->($row));
-      $select_node->push_content($o);
+	$o->replace_content($select{option_content}->($row));
+	$select_node->push_content($o);
+	warn $o->as_HTML if $select{debug};
     }
 
 
@@ -698,7 +819,141 @@ your text wrapped in a C<~literal> element.
 
 One of these days, I'll around to writing a nice C<EXPORT> section.
 
+=head2 Tree Rewriting Classes
+
+
 =head2 Tree Rewriting Methods
+
+=head3 Simplifying calls to HTML::FillInForm
+
+Since HTML::FillInForm gets and returns strings, using HTML::Element instances 
+becomes tedious:
+
+   1. Seamstress has an HTML tree that it wants the form filled in on
+   2. Seamstress converts this tree to a string
+   3. FillInForm parses the string into an HTML tree and then fills in the form
+   4. FillInForm converts the HTML tree to a string
+   5. Seamstress re-parses the HTML for additional processing 
+
+I've filed a bug about this:
+L<https://rt.cpan.org/Ticket/Display.html?id=44105>
+
+This function, fillinform, 
+allows you to pass a tree to fillinform (along with your data structure) and
+get back a tree:
+
+   my $new_tree = $html_tree->fillinform($data_structure);
+  
+
+=head3 Mapping a hashref to HTML elements
+
+It is very common to get a hashref of data from some external source - flat file, database, XML, etc.
+Therefore, it is important to have a convenient way of mapping this data to HTML.
+
+As it turns out, there are 3 ways to do this in HTML::Element::Library. 
+The most strict and structured way to do this is with 
+C<content_handler>. Two other methods, C<hashmap> and C<datamap> require less manual mapping and may prove
+even more easy to use in certain cases.
+
+As is usual with Perl, a practical example is always best. So let's take some sample HTML:
+
+  <h1>user data</h1>
+  <span id="name">?</span> 
+  <span id="email">?</span> 
+  <span id="gender">?</span> 
+
+Now, let's say our data structure is this:
+
+  $ref = { email => 'jim@beam.com', gender => 'lots' } ;
+
+And let's start with the most strict way to get what you want:
+
+ $tree->content_handler(email => $ref->{email} , gender => $ref->{gender}) ;
+
+
+In this case, you manually state the mapping between id tags and hashref keys and
+then C<content_handler> retrieves the hashref data and pops it in the specified place.
+
+Now let's look at the two (actually 2 and a half) other hash-mapping methods. 
+
+ $tree->hashmap(id => $ref);
+
+Now, what this function does is super-destructive. It finds every element in the tree
+with an attribute named id (since 'id' is a parameter, it could find every element with
+some other attribute also) and replaces the content of  those elements with the hashref 
+value.
+
+So, in the case above, the 
+
+   <span id="name">?</span> 
+
+would come out as
+
+  <span id="name"></span> 
+
+(it would be blank) - because there is nothing in the hash with that value, so it substituted
+
+  $ref->{name} 
+
+which was blank and emptied the contents.
+
+Now, let's assume we want to protect name from being auto-assigned. Here is what you do:
+
+ $tree->hashmap(id => $ref, ['name']);
+
+That last array ref is an exclusion list. 
+
+But wouldnt it be nice if you could do a hashmap, but only assigned things which are defined
+in the hashref? C<< defmap() >> to the rescue:
+
+ $tree->defmap(id => $ref);
+
+does just that, so 
+
+   <span id="name">?</span> 
+
+would be left alone.
+
+
+=head4 $elem->hashmap($attr_name, \%hashref, \@excluded, $debug)
+
+This method is designed to take a hashref and populate a series of elements. For example:
+
+
+  <table>
+    <tr sclass="tr" class="alt" align="left" valign="top">
+      <td smap="people_id">1</td>
+      <td smap="phone">(877) 255-3239</td>
+      <td smap="password">*********</td>
+    </tr>
+  </table>
+
+In the table above, there are several attributes named C<< smap >>. If we have a hashref whose keys are the same:
+
+  my %data = (people_id => 888, phone => '444-4444', password => 'dont-you-dare-render');
+
+Then a single API call allows us to populate the HTML while excluding those ones we dont:
+
+  $tree->hashmap(smap => \%data, ['password']);
+
+
+Note: the other way to prevent rendering some of the hash mapping is to not give that element the attr
+you plan to use for hash mapping.
+
+Also note: the function C<< hashmap >> has a simple easy-to-type API. Interally, it calls C<< hash_map >>
+(which has a more verbose keyword calling API). Thus, the above call to C<hashmap()> results in this call:
+
+  $tree->hash_map(hash => \%data, to_attr => 'sid', excluding => ['password']);
+
+=head4 $elem->defmap($attr_name, \%hashref, $debug)
+
+C<defmap> was described above.
+
+
+=head4 $elem->content_handler(%hashref)
+
+C<content_handler> is described below.
+
 
 =head3 $elem->replace_content(@new_elem)
 
@@ -715,7 +970,7 @@ happens to be a non-element, a push_content is performed instead.
 
 After finding the node, it detaches the node's content and pushes $content as the node's content.
 
-=head3 $tree->content_handler($sid_value , $content)
+=head3 $tree->content_handler(%id_content) aka: $tree->assign(%id_content) 
 
 This is a convenience method. Because the look_down criteria will often simply be:
 
@@ -732,6 +987,18 @@ You can call this method to shorten your typing a bit. You can simply type
 Instead of typing:
 
   $elem->set_child_content(sid => 'fixme', 'new text') 
+
+ALSO NOTE: you can pass a hash whose keys are C<id>s and whose values are the content you want there and it will perform the replacement on each hash member:
+
+  my %id_content = (name => "Terrence Brannon",      
+                    email => 'tbrannon@in.com',
+                    balance => 666,                         
+                    content => $main_content);             
+
+  $tree->content_handler(%id_content);  
+
+FINALLY NOTE: C<content_handler> is a lot to type. Smarty, a push-style templating system for PHP, uses 'assign' for what C<content_handler> does. 
+
 
 =head3 $tree->highlander($subtree_span_id, $conditionals, @conditionals_args)
 
@@ -777,6 +1044,16 @@ And there we have it. If the age is less than 10, then the node with
 id C<under10> remains. For age less than 18, the node with id C<under18> 
 remains.
 Otherwise our "else" condition fires and the child with id C<welcome> remains.
+
+=head3 $tree->passover(@id_of_element)
+
+In some cases, you know exactly which element(s) should survive. In this case,
+you can simply call C<passover> to remove it's (their) siblings. For the HTML
+above, you could delete C<under10> and C<welcome> by simply calling:
+
+  $tree->passover('under18');
+
+Because passover takes an array, you can specify several children to preserve.
 
 =head3 $tree->highlander2($tree, $conditionals, @conditionals_args)
 
@@ -920,7 +1197,11 @@ to give you a taste of how C<mute_attr> is used:
 
 
 
-=head2 Tree-Building Methods: Unrolling an array via a single sample element (<ul> container)
+=head2 Tree-Building Methods
+
+
+
+=head3 Unrolling an array via a single sample element (<ul> container)
 
 This is best described by example. Given this HTML:
 
@@ -951,7 +1232,18 @@ To produce this:
   </body>
  </html>
 
-=head2 Tree-Building Methods: Unrolling an array via n sample elements (<dl> container)
+Now, you might be wondering why the API call is:
+ 
+  $tree->iter($li => @items)
+
+instead of:
+
+  $li->iter(@items)
+
+and there is no good answer. The latter would be more concise and it is what I 
+should have done.
+
+=head3 Unrolling an array via n sample elements (<dl> container)
 
 C<iter()> was fine for awhile, but some things
 (e.g. definition lists) need a more general function to make them easy to
@@ -1108,7 +1400,9 @@ So now that we have documented the API, let's see the call we need:
  );
 
 
-=head2 Tree-Building Methods: Select Unrolling
+
+
+=head3 Select Unrolling
 
 The C<unroll_select> method has this API:
 
@@ -1119,6 +1413,8 @@ The C<unroll_select> method has this API:
       option_selected => $closure, # boolean to decide if SELECTED
       data         => $data        # the data to be put into the SELECT
       data_iter    => $closure     # the thing that will get a row of data
+      debug  => $boolean,
+      append => $boolean,   # remove the sample <OPTION> data or append?
     );
 
 Here's an example:
@@ -1129,8 +1425,10 @@ Here's an example:
    option_content   => sub { my $row = shift; $row->clan_name },
    option_selected  => sub { my $row = shift; $row->selected },
    data             => \@query_results, 
-   data_iter        => sub { my $data = shift; $data->next }
- )
+   data_iter        => sub { my $data = shift; $data->next },
+   append => 0,
+   debug => 0
+ );
 
 
 
@@ -1604,11 +1902,13 @@ down instead:
 
 L<HTML::Seamstress>
 
-=head1 AUTHOR
+=head1 AUTHOR / SOURCE
 
 Terrence Brannon, E<lt>tbone@cpan.orgE<gt>
 
 Many thanks to BARBIE for his RT bug report.
+
+The source is at L<http://github.com/metaperl/html-element-library/tree/master>
 
 =head1 COPYRIGHT AND LICENSE
 
