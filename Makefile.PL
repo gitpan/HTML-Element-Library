@@ -22,8 +22,9 @@ WriteMakefile(
       Scalar::Listify       => 0.02,
     }, 
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/HTML/Element/Library.pm', # retrieve abstract from module
-       AUTHOR         => 'Terrence Brannon <terry@hcoop.net>') : ()),
+      (
+
+       AUTHOR         => 'Terrence Brannon <tbone@cpan.org>') : ()),
 );
 
 sub MY::postamble { q{
