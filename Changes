@@ -1,3 +1,7 @@
+2010-01-22  Terrence Brannon  <schemelab@li2-168.members.linode.com>
+
+	* implemented "crunch" method
+
 2006-04-10  U-LIFEBOOK\Administrator  <bauhaus@metaperl.com>
 
 	* removed dependancy on Array::Reform by uploading Array::Group
