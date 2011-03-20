@@ -60,7 +60,7 @@ One of these days, I'll around to writing a nice C<EXPORT> section.
 
 =head3 "de-prepping" HTML
 
-Oftentimes, the HTML to be worked with will have multiple (too many) sample rows:
+Oftentimes, the HTML to be worked with will have multiple sample rows:
 
   <OL>
    <LI>bread
