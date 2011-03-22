@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               HTML-Element-Library
-version:            4.2.c
+version:            4.3
 abstract:           ~
 author:
     - Terrence Brannon <tbone@cpan.org>
@@ -15,7 +15,7 @@ requires:
     File::Slurp:          9999.06
     HTML::FillInForm:     0
     HTML::PrettyPrinter:  0.03
-    HTML::Tree:           3.19
+    HTML::Tree:           4.1
     List::MoreUtils:      0.09
     List::Rotation::Cycle:  1.003
     Moose:                0
