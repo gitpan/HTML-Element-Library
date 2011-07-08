@@ -1,5 +1,5 @@
 package HTML::Element::Library;
-
+# ABSTRACT: Convenience methods for HTML::TreeBuilder and HTML::Element
 
 use strict;
 use warnings;
@@ -69,6 +69,53 @@ sub HTML::Element::defmap {
 	    $found->replace_content( $v );
 	}
     }
+
+}
+
+sub HTML::Element::_only_empty_content {
+  my ($self)=@_;
+  my @c = $self->content_list;
+  my $length  = scalar @c;
+
+  #use Data::Dumper;
+  #warn sprintf 'Testing %s (%s)' , $self->starttag, Dumper(\@c);
+  #warn sprintf "\t\tlength of content: %d ", $length;
+
+  scalar @c == 1 and not length($c[0]);
+}
+
+sub HTML::Element::prune {
+  my ($self)=@_;
+
+  for my $c ($self->content_list) {
+    next unless ref $c;
+    #warn "C: " . Dumper($c);
+    $c->prune;
+  }
+
+  # post-order:
+  $self->delete if ($self->is_empty or $self->_only_empty_content);
+  $self;
+}
+
+sub HTML::Element::newnode {
+  my ($lol, $node_label, $new_node)=@_;
+
+  use Data::Rmap qw(rmap_array);
+
+  my ($mapresult) = rmap_array {
+ 
+
+  if ($_->[0] eq $node_label) {
+    $_ = $new_node;
+    Data::Rmap::cut($_);
+  } else {
+    $_;
+  }
+
+  } $lol;
+
+  $mapresult;
 
 }
 

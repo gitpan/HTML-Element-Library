@@ -1,0 +1,28 @@
+#!/usr/bin/perl -T
+
+
+use warnings;
+use strict;
+
+use Test::More;
+use Test::XML;
+
+BEGIN {
+    use_ok('HTML::TreeBuilder');
+    use_ok('HTML::Element::Prune');
+}
+
+my $initial_lol = [ note => [ shopping => [ item => 'sample' ] ] ];
+my $new_lol = newnode($initial_lol, item => shopping_items());
+
+
+sub shopping_items {
+  my @shopping_items = map { [ item => $item ] } qw(bread butter beans);
+  \@shopping_items;
+}
+
+is_xml($root->as_HTML, $expected, 'test pruning');
+
+
+
+done_testing;

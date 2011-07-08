@@ -1,55 +1,70 @@
-use 5.006001;
-use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
-WriteMakefile
-  (
-   NAME              => 'HTML::Element::Library',
-   VERSION_FROM      => 'lib/HTML/Element/Library.pm', # finds $VERSION
-   PREREQ_PM         => 
-   {
-    Array::Group          => 1.00,
 
-    Moose => 0,
-    File::Slurp           => 9999.06,
+use strict;
+use warnings;
 
-    HTML::FillInForm => 0,
-    HTML::PrettyPrinter   => 0.03,
-    HTML::Tree            => 4.1,
 
-    List::Rotation::Cycle => 1.003,
-    List::MoreUtils       => 0.09,
 
-    Params::Validate      => 0.80,
+use ExtUtils::MakeMaker 6.30;
 
-    Scalar::Listify       => 0.02,
-   }, 
-   ($] >= 5.005 ?      ## Add these new keywords supported since 5.005
-    (
 
-     AUTHOR         => 'Terrence Brannon <tbone@cpan.org>') : ()),
-  );
 
-sub MY::postamble { q{
+my %WriteMakefileArgs = (
+  'ABSTRACT' => 'Convenience methods for HTML::TreeBuilder and HTML::Element',
+  'AUTHOR' => 'Terrence Brannon <metaperl@gmail.com>',
+  'BUILD_REQUIRES' => {
+    'Cwd' => '0',
+    'Exporter' => '0',
+    'File::Slurp' => '0',
+    'FileHandle' => '0',
+    'HTML::PrettyPrinter' => '0',
+    'HTML::TreeBuilder' => '0',
+    'Test' => '0',
+    'Test::More' => '0'
+  },
+  'CONFIGURE_REQUIRES' => {
+    'ExtUtils::MakeMaker' => '6.30'
+  },
+  'DISTNAME' => 'HTML-Element-Library',
+  'EXE_FILES' => [],
+  'LICENSE' => 'perl',
+  'NAME' => 'HTML::Element::Library',
+  'PREREQ_PM' => {
+    'Array::Group' => '0',
+    'Carp' => '0',
+    'Data::Dumper' => '0',
+    'Data::Rmap' => '0',
+    'HTML::Element' => '0',
+    'HTML::FillInForm' => '0',
+    'List::MoreUtils' => '0',
+    'List::Rotation::Cycle' => '0',
+    'List::Util' => '0',
+    'Params::Validate' => '0',
+    'Scalar::Listify' => '0'
+  },
+  'VERSION' => '5.111890',
+  'test' => {
+    'TESTS' => 't/*.t'
+  }
+);
 
-cleandist: FORCE
-	make again; make cleanmanifest; make docs; make dist
 
-again: FORCE
-	make clean; perl Makefile.PL; make pm_to_blib
+unless ( eval { ExtUtils::MakeMaker->VERSION(6.56) } ) {
+  my $br = delete $WriteMakefileArgs{BUILD_REQUIRES};
+  my $pp = $WriteMakefileArgs{PREREQ_PM};
+  for my $mod ( keys %$br ) {
+    if ( exists $pp->{$mod} ) {
+      $pp->{$mod} = $br->{$mod} if $br->{$mod} > $pp->{$mod};
+    }
+    else {
+      $pp->{$mod} = $br->{$mod};
+    }
+  }
+}
 
-cleanmanifest: realclean FORCE
-	rm MANIFEST ; perl Makefile.PL; touch MANIFEST; make manifest
+delete $WriteMakefileArgs{CONFIGURE_REQUIRES}
+  unless eval { ExtUtils::MakeMaker->VERSION(6.52) };
 
-%.t: pm_to_blib FORCE
-	make; perl -Iblib/lib $@
+WriteMakefile(%WriteMakefileArgs);
 
-docs : README CHANGES
 
-README: lib/HTML/Element/Library.pm
-	pod2text lib/HTML/Element/Library.pm > README
 
-CHANGES: lib/HTML/Element/Library/Changes.pod
-	pod2text lib/HTML/Element/Library/Changes.pod > CHANGES
-
-}; }
