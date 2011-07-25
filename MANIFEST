@@ -105,7 +105,8 @@ t/iter2.t
 t/m/SelectData.pm
 t/m/SimpleClass.pm
 t/m/TestUtils.pm
-t/newnode.t
+t/newchild.t
+t/newchild.t~
 t/newnode.t~
 t/not-used/Arsenal.pl
 t/not-used/Arsenal.pm

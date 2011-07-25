@@ -32,8 +32,4 @@ requires:
   List::Util: 0
   Params::Validate: 0
   Scalar::Listify: 0
-resources:
-  bugtracker: https://github.com/metaperl/html-element-library/issues
-  homepage: http://www.metaperl.org
-  repository: git://github.com/metaperl/html-element-library.git
-version: 5.111890
+version: 5.112060

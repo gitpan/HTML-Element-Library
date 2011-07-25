@@ -41,7 +41,7 @@ my %WriteMakefileArgs = (
     'Params::Validate' => '0',
     'Scalar::Listify' => '0'
   },
-  'VERSION' => '5.111890',
+  'VERSION' => '5.112060',
   'test' => {
     'TESTS' => 't/*.t'
   }
