@@ -1,4 +1,7 @@
 package HTML::Element::Library;
+BEGIN {
+  $HTML::Element::Library::VERSION = '5.112170';
+}
 # ABSTRACT: Convenience methods for HTML::TreeBuilder and HTML::Element
 
 use strict;

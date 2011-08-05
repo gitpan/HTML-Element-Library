@@ -7,13 +7,13 @@
       media="screen" type="text/css">
   </head>
   <body>
-<script type="text/javascript">
-function startGallery() {
-var myGallery = new gallery($('myGallery'), {
-timed: true
-});
-}
-window.addEvent('domready', startGallery);
+<script type="text/javascript">
+function startGallery() {
+var myGallery = new gallery($('myGallery'), {
+timed: true
+});
+}
+window.addEvent('domready', startGallery);
 </script>
     <div id="myGallery">
       <div class="imageElement">
