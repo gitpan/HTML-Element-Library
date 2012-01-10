@@ -8,6 +8,7 @@ use Test::More;
 use TestUtils;
 use HTML::TreeBuilder;
 use HTML::Element::Library;
+use Test::XML;
 
 sub tage {
 
@@ -18,9 +19,14 @@ sub tage {
 
   $tree->crunch(look_down => [ class => 'imageElement' ], leave => 1);
 
-  my $generated_html = ptree($tree, "$root.gen");
+  my $generated_html = strip_ws ( ptree($tree, "$root.gen") );
+  # must put read_file() in scalar context so that a string instead of first line is returned.
+  my $expected_html = strip_ws(scalar File::Slurp::read_file("$root.exp"));
 
-  is ($generated_html, File::Slurp::read_file("$root.exp"), "HTML for crunch");
+  #warn "g:$generated_html";
+  #warn "e:$expected_html";
+
+  is ($generated_html, $expected_html, "HTML for crunch");
 }
 
 
