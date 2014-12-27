@@ -35,4 +35,4 @@ requires:
   perl: '5.006000'
 resources:
   repository: http://git.ieval.ro/?p=html-element-library.git
-version: 5.200_001
+version: 5.200_002

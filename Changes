@@ -1,5 +1,8 @@
 Revision history for Perl extension HTML::Element::Library.
 
+5.200_002 2014-12-27T14:17+02:00
+ - Remove 'use v5.14;' from t/perlcritic.t
+
 5.200_001 2014-12-27T12:45+02:00
  - Adopt module
  - Clean up/tidy/refactor everything (code, tests, pod, packaging)

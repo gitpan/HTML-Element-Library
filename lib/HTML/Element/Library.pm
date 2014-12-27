@@ -2,7 +2,7 @@ package HTML::Element::Library;
 use strict;
 use warnings;
 
-our $VERSION = '5.200_001';
+our $VERSION = '5.200_002';
 our $DEBUG = 0;
 
 use Array::Group ':all';
