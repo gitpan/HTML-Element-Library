@@ -1,46 +1,13 @@
-# Welcome to a -*- perl -*- test script
+#!/usr/bin/perl
 use strict;
-use Test::More qw(no_plan);
+use warnings;
 
-sub req_ver {
-  my $string = shift;
-  my $eval = "#Using $string version v\$${string}::VERSION\n";
-  my $eval2 = sprintf 'warn "%s"', $eval;
-  require_ok($string);
-  eval  $eval2 ;
-}
+use Test::More tests => 1;
 
-my @module = 
-  qw(
-     Array::Group 
-     File::Slurp
+diag "Running under perl version $] for $^O",  (chr(65) eq 'A') ? "\n" : " in a non-ASCII world\n";
+diag "Win32::BuildNumber ", &Win32::BuildNumber(), "\n" if defined(&Win32::BuildNumber) and defined &Win32::BuildNumber();
+diag "MacPerl verison $MacPerl::Version\n" if defined $MacPerl::Version;
+diag sprintf "Current time local: %s\n", scalar localtime;
+diag sprintf "Current time GMT:   %s\n", scalar gmtime;
 
-     HTML::PrettyPrinter 
-     HTML::Tree 
-     HTML::Element
-     HTML::Parser 
-     HTML::Entities 
-     HTML::Tagset 
-
-     List::Rotation::Cycle
-     List::MoreUtils
-
-     Params::Validate
-
-     Scalar::Listify
-    ) ;
-
-req_ver($_) for @module;
-
-warn "# Running under perl version $] for $^O",
-  (chr(65) eq 'A') ? "\n" : " in a non-ASCII world\n";
-warn "# Win32::BuildNumber ", &Win32::BuildNumber(), "\n"
-  if defined(&Win32::BuildNumber) and defined &Win32::BuildNumber();
-warn "# MacPerl verison $MacPerl::Version\n"
-  if defined $MacPerl::Version;
-warn sprintf
-  "# Current time local: %s\n# Current time GMT:   %s\n",
-  scalar(localtime($^T)), scalar(gmtime($^T));
-  
-ok 1;
-
+pass;

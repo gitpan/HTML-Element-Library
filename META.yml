@@ -1,35 +1,38 @@
 ---
-abstract: "Convenience methods for HTML::TreeBuilder and HTML::Element\r"
+abstract: 'HTML::Element convenience functions'
 author:
   - 'Terrence Brannon <metaperl@gmail.com>'
+  - 'Marius Gavrilescu <marius@ieval.ro>'
 build_requires:
-  Cwd: 0
-  Exporter: 0
-  File::Slurp: 0
-  FileHandle: 0
-  HTML::PrettyPrinter: 0
-  HTML::TreeBuilder: 0
-  Test: 0
-  Test::More: 0
+  File::Slurp: '0'
+  HTML::PrettyPrinter: '0'
+  HTML::TreeBuilder: '0'
+  Test::More: '0'
+  Test::XML: '0'
 configure_requires:
-  ExtUtils::MakeMaker: 6.30
+  ExtUtils::MakeMaker: '0'
 dynamic_config: 0
-generated_by: 'Dist::Zilla version 4.200012, CPAN::Meta::Converter version 2.112150'
+generated_by: 'ExtUtils::MakeMaker version 6.98, CPAN::Meta::Converter version 2.142690'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
-  version: 1.4
+  version: '1.4'
 name: HTML-Element-Library
+no_index:
+  directory:
+    - t
+    - inc
 requires:
-  Array::Group: 0
-  Carp: 0
-  Data::Dumper: 0
-  Data::Rmap: 0
-  HTML::Element: 0
-  HTML::FillInForm: 0
-  List::MoreUtils: 0
-  List::Rotation::Cycle: 0
-  List::Util: 0
-  Params::Validate: 0
-  Scalar::Listify: 0
-version: 5.120100
+  Array::Group: '0'
+  Data::Rmap: '0'
+  HTML::Element: '0'
+  HTML::FillInForm: '0'
+  List::MoreUtils: '0'
+  List::Rotation::Cycle: '0'
+  List::Util: '0'
+  Params::Validate: '0'
+  Scalar::Listify: '0'
+  perl: '5.006000'
+resources:
+  repository: http://git.ieval.ro/?p=html-element-library.git
+version: 5.200_001
